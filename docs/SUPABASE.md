@@ -124,11 +124,16 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
    - Click **Run** to provision `profiles`, `health_assessments`, RLS policies, and the `on_auth_user_created` trigger.
 
 5. **Configure Authentication Settings:**
-   - Go to **Authentication > Providers > Email**.
-   - For local development without email delays, toggle **Confirm email** OFF (or leave ON if you prefer verifying email via inbox).
+   - Go to **Authentication > Providers > Email**:
+     - **For quick local development (no email delay):** You can toggle **Confirm email** **OFF**. Users will be logged in immediately on signup.
+     - **For real email verification testing:** Leave **Confirm email** **ON**. When signing up, users will see the "Check your email" screen with a 60-second resend cooldown timer.
+     - *(Manual confirmation shortcut):* In the Supabase Dashboard under **Authentication > Users**, you can click the three dots (`...`) next to any unconfirmed user and select **Confirm User** to manually activate them.
    - Go to **Authentication > URL Configuration**:
-     - **Site URL:** `http://localhost:8080`
-     - **Redirect URLs:** `http://localhost:8080/**`
+     - **Site URL:** `http://localhost:8080` (or your production domain on deployment)
+     - **Redirect URLs:** `http://localhost:8080/**` (add `https://your-domain.com/**` for production)
+   - **Production Launch Reminder:**
+     - Before public launch, always ensure **Confirm email** is set to **ON**.
+     - Note that Supabase's built-in default email service has a strict rate limit (~3 emails/hour on free tier). For production (Milestone 5), configure a custom SMTP provider (e.g. Resend, SendGrid, or AWS SES) in **Project Settings > Authentication > SMTP Settings**.
 
 6. **Restart Vite Dev Server:**
    Restart `npm run dev` so Vite loads the new `.env` variables into memory.

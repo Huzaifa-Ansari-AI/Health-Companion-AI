@@ -18,7 +18,16 @@
 
 ---
 
-## 3. Secret Scans & Audits
+## 3. Authentication Security & Email Verification
+
+- **Password Policy:** Enforces minimum 8 characters and checks against known trivial passwords.
+- **Email Verification & Session Guard:** Accounts created while email confirmation is active receive no session until verified. Premature access to protected routes is guarded by `ProtectedRoute`.
+- **Anti-Abuse Throttling:** Resend confirmation requests enforce a client-side 60-second cooldown timer alongside Supabase server-side rate limits.
+- **Error Obfuscation:** Authentication error mapping avoids leaking whether an account exists to mitigate email enumeration vectors.
+
+---
+
+## 4. Secret Scans & Audits
 
 - Codebase regularly verified against patterns like `sk-`, `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and sensitive tokens.
 - All `.env*` files excluded by `.gitignore`.

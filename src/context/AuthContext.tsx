@@ -8,7 +8,12 @@ interface AuthContextType {
   isLoading: boolean;
   isDemo: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error: Error | null; hasSession: boolean; user: User | null }>;
+  resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   loginAsDemo: () => void;
 }
@@ -83,15 +88,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error: new Error(
           "Supabase is not configured yet. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file, or use 'Try Demo Account'."
         ),
+        hasSession: false,
+        user: null,
       };
     }
-    const { error } = await supabase.auth.signUp({
+    const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName || "",
         },
+        emailRedirectTo: redirectUrl,
+      },
+    });
+    return {
+      error,
+      hasSession: Boolean(data?.session),
+      user: data?.user ?? null,
+    };
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    if (!isSupabaseConfigured) {
+      return {
+        error: new Error("Supabase is not configured yet. Please check your .env file."),
+      };
+    }
+    const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
       },
     });
     return { error };
@@ -127,6 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isDemo,
         signIn,
         signUp,
+        resendVerificationEmail,
         signOut,
         loginAsDemo,
       }}
