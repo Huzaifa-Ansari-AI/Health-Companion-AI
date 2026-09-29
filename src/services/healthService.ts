@@ -3,12 +3,12 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 export interface AssessmentRecord {
   id?: string;
   user_id?: string;
-  height_cm: number;
-  weight_kg: number;
-  bmi: number;
-  bmi_category: string;
+  height_cm?: number;
+  weight_kg?: number;
+  bmi?: number;
+  bmi_category?: string;
   symptoms: string[];
-  lifestyle_data: {
+  lifestyle_data?: {
     sleep_hours?: number;
     activity_level?: string;
     water_liters?: number;
@@ -17,6 +17,9 @@ export interface AssessmentRecord {
   ai_summary: string;
   recommendations: string[];
   disclaimer: string;
+  source?: "assessment" | "chat";
+  session_id?: string;
+  chat_summary_data?: Record<string, unknown>;
   created_at?: string;
 }
 
