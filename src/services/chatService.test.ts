@@ -8,6 +8,7 @@ import {
   loadChatMessages,
   saveChatMessage,
   sendChatMessage,
+  generateHealthSummary,
 } from "./chatService";
 import { supabase } from "@/lib/supabase";
 
@@ -178,4 +179,40 @@ describe("chatService - sendChatMessage Flow", () => {
     ).rejects.toThrow("Message cannot be empty");
   });
 });
+
+describe("chatService - generateHealthSummary", () => {
+  it("synthesizes symptoms, lifestyle recommendations, doctor questions, and disclaimers", async () => {
+    const testSession = await createChatSession("demo-user-id", "Summary Test Session", true);
+
+    // Add assistant message with extracted symptoms to the test session
+    await saveChatMessage(
+      {
+        session_id: testSession.id,
+        user_id: "demo-user-id",
+        role: "assistant",
+        content: "I have recorded your symptoms.",
+        metadata: {
+          extracted: {
+            symptoms: ["frequent migraines", "light sensitivity"],
+            duration: "5 days",
+            intensity: "moderate",
+            lifestyle: "irregular sleep",
+          },
+        },
+      },
+      true
+    );
+
+    const summary = await generateHealthSummary(testSession.id, "demo-user-id", true);
+    expect(summary.symptoms).toContain("frequent migraines");
+    expect(summary.symptoms).toContain("light sensitivity");
+    expect(summary.duration).toBe("5 days");
+    expect(summary.intensity).toBe("moderate");
+    expect(summary.lifestyle_factors).toContain("irregular sleep");
+    expect(summary.recommendations.length).toBeGreaterThan(0);
+    expect(summary.doctor_questions.length).toBeGreaterThan(0);
+    expect(summary.disclaimer).toContain("This is not a medical diagnosis");
+  });
+});
+
 

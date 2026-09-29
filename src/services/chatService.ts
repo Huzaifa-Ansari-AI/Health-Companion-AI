@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { ChatSession, ChatMessage, ChatRole, RiskLevel, ChatConsultResponse } from "@/types/chat";
+import { ChatSession, ChatMessage, ChatRole, RiskLevel, ChatConsultResponse, HealthAssessmentSummary } from "@/types/chat";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "@/lib/emergencyDetector";
 
 const DEMO_SESSIONS_KEY = "healthai_demo_chat_sessions";
@@ -432,4 +432,92 @@ export async function sendChatMessage(
 
   return data as ChatConsultResponse;
 }
+
+/**
+ * Synthesizes a structured Health Assessment Summary from a consultation session.
+ * Extracts symptoms, duration, intensity, lifestyle factors, risk level, lifestyle advice,
+ * questions for a doctor, and required medical disclaimers.
+ */
+export async function generateHealthSummary(
+  sessionId: string,
+  userId: string,
+  isDemo = false
+): Promise<HealthAssessmentSummary> {
+  const messages = await loadChatMessages(sessionId, isDemo);
+  const session = await getChatSession(sessionId, userId, isDemo);
+
+  const userMessages = messages.filter((m) => m.role === "user");
+  const assistantMessages = messages.filter((m) => m.role === "assistant");
+
+  // Collect all extracted symptoms across messages
+  const symptomsSet = new Set<string>();
+  let duration = "";
+  let intensity = "";
+  const lifestyleFactorsSet = new Set<string>();
+
+  for (const msg of [...assistantMessages].reverse()) {
+    if (msg.metadata?.extracted?.symptoms) {
+      msg.metadata.extracted.symptoms.forEach((s) => {
+        if (s && s.trim()) symptomsSet.add(s.trim());
+      });
+    }
+    if (msg.metadata?.extracted?.duration && !duration) {
+      duration = msg.metadata.extracted.duration;
+    }
+    if (msg.metadata?.extracted?.intensity && !intensity) {
+      intensity = msg.metadata.extracted.intensity;
+    }
+    if (msg.metadata?.extracted?.lifestyle) {
+      lifestyleFactorsSet.add(msg.metadata.extracted.lifestyle);
+    }
+  }
+
+  // Fallback if none extracted directly
+  if (symptomsSet.size === 0) {
+    if (userMessages.length > 0) {
+      symptomsSet.add(userMessages[0].content.slice(0, 40));
+    } else {
+      symptomsSet.add("General wellness concern");
+    }
+  }
+
+  const symptomsList = Array.from(symptomsSet);
+  const risk_level: RiskLevel = session?.risk_level || "Low";
+
+  // Construct recommendations based on risk and lifestyle
+  const recommendations: string[] = [
+    "Maintain consistent hydration with at least 2 liters of water daily.",
+    "Prioritize 7-9 hours of restful, uninterrupted sleep nightly.",
+    "Avoid strenuous physical exertion while symptoms are active.",
+  ];
+
+  if (risk_level === "High" || risk_level === "Medium") {
+    recommendations.unshift("Schedule a comprehensive medical evaluation with your primary care physician.");
+  }
+
+  // Construct doctor discussion points
+  const doctor_questions: string[] = [
+    `How long do these symptoms typically take to resolve on their own?`,
+    `Are there any specific diagnostic tests or lab screenings you recommend for my situation?`,
+    `What specific warning signs should prompt me to seek urgent emergency care?`,
+    `Could my current sleep patterns or stress levels be contributing to this?`,
+  ];
+
+  const summary = `Based on your consultation, you reported experiencing ${symptomsList.join(", ")}${
+    duration ? ` for approximately ${duration}` : ""
+  }${intensity ? ` with ${intensity} intensity` : ""}. Your overall wellness risk indicator is categorized as ${risk_level}.`;
+
+  return {
+    symptoms: symptomsList,
+    duration: duration || "Recent onset",
+    intensity: intensity || "Mild to moderate",
+    lifestyle_factors: Array.from(lifestyleFactorsSet),
+    risk_level,
+    summary,
+    recommendations,
+    doctor_questions,
+    disclaimer: "This is not a medical diagnosis. It is general wellness guidance. Please consult a qualified healthcare professional.",
+  };
+}
+
 

@@ -8,13 +8,16 @@ import {
   deleteChatSession,
   updateChatSession,
   sendChatMessage,
+  generateHealthSummary,
 } from "@/services/chatService";
-import { ChatSession, ChatMessage } from "@/types/chat";
+import { saveChatAssessment, fetchUserAssessments } from "@/services/healthService";
+import { ChatSession, ChatMessage, HealthAssessmentSummary } from "@/types/chat";
 import { DisclaimerBar } from "@/components/chat/DisclaimerBar";
 import { MessageList } from "@/components/chat/MessageList";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
 import { SessionList } from "@/components/chat/SessionList";
+import { HealthSummaryDialog } from "@/components/chat/HealthSummaryDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -40,6 +43,9 @@ const Chat: React.FC = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [generatedSummary, setGeneratedSummary] = useState<HealthAssessmentSummary | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   // 1. Query: List Sessions
   const {
@@ -74,6 +80,18 @@ const Chat: React.FC = () => {
     },
     enabled: Boolean(activeSessionId),
   });
+
+  // 2b. Query: User assessments (to check if current session is already saved to dashboard)
+  const { data: userAssessments = [] } = useQuery({
+    queryKey: ["user-assessments", user?.id, isDemo],
+    queryFn: async () => {
+      if (!user) return [];
+      return fetchUserAssessments(user.id, isDemo);
+    },
+    enabled: Boolean(user),
+  });
+
+  const isAlreadySaved = userAssessments.some((a) => a.session_id === activeSessionId);
 
   // 3. Mutation: Create Session
   const createSessionMutation = useMutation({
@@ -180,6 +198,31 @@ const Chat: React.FC = () => {
     }
   };
 
+  const handleOpenSummary = async () => {
+    if (!activeSessionId || !user) return;
+    setIsGeneratingSummary(true);
+    try {
+      const summary = await generateHealthSummary(activeSessionId, user.id, isDemo);
+      setGeneratedSummary(summary);
+      setSummaryModalOpen(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to synthesize summary";
+      toast({ title: "Summary generation failed", description: msg, variant: "destructive" });
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  const handleSaveSummary = async () => {
+    if (!generatedSummary || !activeSessionId || !user) return;
+    await saveChatAssessment(generatedSummary, activeSessionId, user.id, isDemo);
+    queryClient.invalidateQueries({ queryKey: ["user-assessments", user?.id, isDemo] });
+    toast({
+      title: "Summary Saved to Dashboard",
+      description: "You can view this health summary in your health history anytime.",
+    });
+  };
+
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
   // Check if an emergency warning was detected in the active consultation
@@ -229,17 +272,14 @@ const Chat: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              toast({
-                title: "Report Generation Ready",
-                description: "Review and save your Health Assessment Summary.",
-              });
-            }}
-            disabled={messages.length < 2}
+            onClick={handleOpenSummary}
+            disabled={messages.length < 2 || isGeneratingSummary}
             className="h-8 gap-1.5 text-xs rounded-xl shadow-2xs font-normal"
           >
             <FileText className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden sm:inline">Health Summary</span>
+            <span className="hidden sm:inline">
+              {isGeneratingSummary ? "Synthesizing..." : isAlreadySaved ? "View Summary" : "Health Summary"}
+            </span>
           </Button>
 
           {/* Mobile Drawer Trigger for Sessions */}
@@ -323,6 +363,16 @@ const Chat: React.FC = () => {
           />
         </main>
       </div>
+
+      {/* 4. Health Summary Review & Export Modal */}
+      <HealthSummaryDialog
+        open={summaryModalOpen}
+        onOpenChange={setSummaryModalOpen}
+        summary={generatedSummary}
+        isLoading={isGeneratingSummary}
+        onSave={handleSaveSummary}
+        isAlreadySaved={isAlreadySaved}
+      />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { HealthAssessmentSummary } from "@/types/chat";
 
 export interface AssessmentRecord {
   id?: string;
@@ -119,3 +120,43 @@ export async function saveAssessment(
 
   return data;
 }
+
+/**
+ * Saves a synthesized AI chat consultation summary into health_assessments.
+ * Prevents duplicate rows for the same session.
+ */
+export async function saveChatAssessment(
+  summary: HealthAssessmentSummary,
+  sessionId: string,
+  userId: string,
+  isDemo = false
+): Promise<AssessmentRecord> {
+  const existing = await fetchUserAssessments(userId, isDemo);
+  const alreadySaved = existing.find((a) => a.session_id === sessionId);
+  if (alreadySaved) {
+    return alreadySaved;
+  }
+
+  const record: Omit<AssessmentRecord, "id" | "created_at"> = {
+    user_id: userId,
+    source: "chat",
+    session_id: sessionId,
+    symptoms: summary.symptoms,
+    risk_level: summary.risk_level,
+    ai_summary: summary.summary,
+    recommendations: summary.recommendations,
+    disclaimer: summary.disclaimer,
+    lifestyle_data: {
+      activity_level: summary.lifestyle_factors?.join(", ") || "Reported via AI consultation",
+    },
+    chat_summary_data: {
+      duration: summary.duration,
+      intensity: summary.intensity,
+      lifestyle_factors: summary.lifestyle_factors,
+      doctor_questions: summary.doctor_questions,
+    },
+  };
+
+  return saveAssessment(record, isDemo);
+}
+
