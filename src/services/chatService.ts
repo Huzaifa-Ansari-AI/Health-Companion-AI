@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { ChatSession, ChatMessage, ChatRole, RiskLevel } from "@/types/chat";
+import { ChatSession, ChatMessage, ChatRole, RiskLevel, ChatConsultResponse } from "@/types/chat";
+import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "@/lib/emergencyDetector";
 
 const DEMO_SESSIONS_KEY = "healthai_demo_chat_sessions";
 const DEMO_MESSAGES_KEY = "healthai_demo_chat_messages";
@@ -300,3 +301,135 @@ export async function saveChatMessage(
 
   return data as ChatMessage;
 }
+
+/**
+ * Sends a message in a chat session.
+ * Evaluates emergency detection FIRST. In Demo mode, returns safe mock guidance.
+ * In production, invokes the Supabase Edge Function 'chat-consult'.
+ */
+export async function sendChatMessage(
+  sessionId: string,
+  userId: string,
+  content: string,
+  isDemo = false
+): Promise<ChatConsultResponse> {
+  const trimmed = content.trim().slice(0, 2000);
+  if (!trimmed) {
+    throw new Error("Message cannot be empty");
+  }
+
+  // 1. Client-Side Emergency Check
+  const emergencyCheck = detectEmergency(trimmed);
+  if (emergencyCheck.isEmergency) {
+    const emergencyResponse: ChatConsultResponse = {
+      reply: EMERGENCY_DISCLAIMER_MESSAGE,
+      risk_level: "High",
+      emergency: true,
+      suggested_replies: [
+        "I am calling emergency services",
+        "I am heading to the nearest ER",
+        "What can I do while waiting?",
+      ],
+      extracted: {
+        symptoms: [emergencyCheck.triggerPhrase || "emergency symptom"],
+        duration: "Immediate",
+        intensity: "Severe",
+        lifestyle: "",
+      },
+    };
+
+    // Save user message
+    await saveChatMessage(
+      {
+        session_id: sessionId,
+        user_id: userId,
+        role: "user",
+        content: trimmed,
+      },
+      isDemo
+    );
+
+    // Save assistant emergency message
+    await saveChatMessage(
+      {
+        session_id: sessionId,
+        user_id: userId,
+        role: "assistant",
+        content: emergencyResponse.reply,
+        metadata: {
+          emergency: true,
+          risk_level: "High",
+          suggested_replies: emergencyResponse.suggested_replies,
+          extracted: emergencyResponse.extracted,
+        },
+      },
+      isDemo
+    );
+
+    // Elevate session risk level to High
+    await updateChatSession(sessionId, { risk_level: "High" }, isDemo);
+
+    return emergencyResponse;
+  }
+
+  // 2. Demo Mode Simulation (No real external AI calls, safe structured guidance)
+  if (isDemo || !isSupabaseConfigured) {
+    await saveChatMessage(
+      {
+        session_id: sessionId,
+        user_id: userId,
+        role: "user",
+        content: trimmed,
+      },
+      isDemo
+    );
+
+    const mockResponse: ChatConsultResponse = {
+      reply: `[Demo AI] Thank you for describing your symptoms. In this demo mode, I can provide general lifestyle wellness guidance: remember to maintain steady hydration, prioritize restful sleep, and avoid strenuous strain. How long have you been experiencing this?`,
+      risk_level: "Low",
+      emergency: false,
+      suggested_replies: ["Started today", "A few days", "Mild intensity", "Associated with stress"],
+      extracted: {
+        symptoms: [trimmed.slice(0, 30)],
+        duration: "recent",
+        intensity: "mild",
+        lifestyle: "hydration and rest recommended",
+      },
+    };
+
+    await saveChatMessage(
+      {
+        session_id: sessionId,
+        user_id: userId,
+        role: "assistant",
+        content: mockResponse.reply,
+        metadata: {
+          emergency: false,
+          risk_level: mockResponse.risk_level,
+          suggested_replies: mockResponse.suggested_replies,
+          extracted: mockResponse.extracted,
+        },
+      },
+      isDemo
+    );
+
+    await updateChatSession(sessionId, { risk_level: "Low" }, isDemo);
+
+    return mockResponse;
+  }
+
+  // 3. Supabase Edge Function: chat-consult
+  const { data, error } = await supabase.functions.invoke("chat-consult", {
+    body: {
+      session_id: sessionId,
+      message: trimmed,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to communicate with AI health consultant.");
+  }
+
+  return data as ChatConsultResponse;
+}
+

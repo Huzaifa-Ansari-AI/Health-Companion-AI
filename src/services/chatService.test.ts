@@ -7,6 +7,7 @@ import {
   deleteChatSession,
   loadChatMessages,
   saveChatMessage,
+  sendChatMessage,
 } from "./chatService";
 import { supabase } from "@/lib/supabase";
 
@@ -137,3 +138,44 @@ describe("chatService - Supabase Integration (Mocked)", () => {
     fromSpy.mockRestore();
   });
 });
+
+describe("chatService - sendChatMessage Flow", () => {
+  it("immediately intercepts chest pain emergency without calling AI", async () => {
+    const response = await sendChatMessage(
+      "demo-session-default",
+      "demo-user-id",
+      "I am having severe chest pain and cannot breathe.",
+      true
+    );
+
+    expect(response.emergency).toBe(true);
+    expect(response.risk_level).toBe("High");
+    expect(response.reply).toContain("EMERGENCY WARNING");
+
+    const messages = await loadChatMessages("demo-session-default", true);
+    const lastMsg = messages[messages.length - 1];
+    expect(lastMsg.role).toBe("assistant");
+    expect(lastMsg.metadata?.emergency).toBe(true);
+  });
+
+  it("processes normal non-emergency symptom in demo mode with structured guidance", async () => {
+    const response = await sendChatMessage(
+      "demo-session-default",
+      "demo-user-id",
+      "I have noticed mild stiffness in my neck after working at my desk.",
+      true
+    );
+
+    expect(response.emergency).toBe(false);
+    expect(response.risk_level).toBe("Low");
+    expect(response.reply).toContain("[Demo AI]");
+    expect(response.suggested_replies.length).toBeGreaterThan(0);
+  });
+
+  it("rejects empty message with an error", async () => {
+    await expect(
+      sendChatMessage("demo-session-default", "demo-user-id", "   ", true)
+    ).rejects.toThrow("Message cannot be empty");
+  });
+});
+
