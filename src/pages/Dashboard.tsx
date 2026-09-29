@@ -16,6 +16,7 @@ import {
   Sparkles,
   ArrowRight,
   TrendingUp,
+  MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -96,8 +97,14 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link to="/chat">
+              <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs rounded-xl">
+                <MessageSquare className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">AI Consultation</span>
+              </Button>
+            </Link>
             <Link to="/assessment">
-              <Button size="sm" className="gap-1.5 shadow-sm">
+              <Button size="sm" className="gap-1.5 shadow-2xs rounded-xl">
                 <PlusCircle className="w-4 h-4" />
                 <span>New Check</span>
               </Button>
@@ -122,12 +129,20 @@ const Dashboard: React.FC = () => {
               Your personalized AI wellness monitoring & health history dashboard.
             </p>
           </div>
-          {latest && (
-            <Button variant="outline" size="sm" onClick={handlePrintReport} className="gap-2 self-start sm:self-auto">
-              <Download className="w-4 h-4" />
-              Download Report
-            </Button>
-          )}
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <Link to="/chat">
+              <Button size="sm" className="gap-2 shadow-sm rounded-xl">
+                <MessageSquare className="w-4 h-4" />
+                Start AI Consultation
+              </Button>
+            </Link>
+            {latest && (
+              <Button variant="outline" size="sm" onClick={handlePrintReport} className="gap-2 rounded-xl">
+                <Download className="w-4 h-4" />
+                Download Report
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Disclaimer Banner */}
