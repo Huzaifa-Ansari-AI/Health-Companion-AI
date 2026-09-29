@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Sparkles } from "lucide-react";
+import { ArrowRight, Shield, Sparkles, LayoutDashboard } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const Hero = () => {
+  const { user } = useAuth();
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden gradient-hero">
       {/* Decorative elements */}
@@ -35,17 +37,36 @@ const Hero = () => {
 
           {/* CTA buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 animate-fade-up animation-delay-300">
-            <Link to="/auth?mode=signup">
-              <Button variant="hero" size="lg" className="w-full sm:w-auto">
-                Start Free Health Check
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Link to="/auth">
-              <Button variant="hero-outline" size="lg" className="w-full sm:w-auto">
-                Try Demo Account
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/assessment">
+                  <Button variant="hero" size="lg" className="w-full sm:w-auto">
+                    Start Health Check
+                    <ArrowRight className="w-5 h-5" />
+                  </Button>
+                </Link>
+                <Link to="/dashboard">
+                  <Button variant="hero-outline" size="lg" className="w-full sm:w-auto gap-2">
+                    <LayoutDashboard className="w-5 h-5" />
+                    View My Dashboard
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/auth?mode=signup">
+                  <Button variant="hero" size="lg" className="w-full sm:w-auto">
+                    Start Free Health Check
+                    <ArrowRight className="w-5 h-5" />
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button variant="hero-outline" size="lg" className="w-full sm:w-auto">
+                    Try Demo Account
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Trust note */}
