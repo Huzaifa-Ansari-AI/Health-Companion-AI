@@ -67,7 +67,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
-      return { error: new Error("Supabase is not configured yet. Please use Try Demo Account or configure .env.") };
+      return {
+        error: new Error(
+          "Supabase is not configured yet. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file, or use 'Try Demo Account'."
+        ),
+      };
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
@@ -75,7 +79,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     if (!isSupabaseConfigured) {
-      return { error: new Error("Supabase is not configured yet. Please use Try Demo Account or configure .env.") };
+      return {
+        error: new Error(
+          "Supabase is not configured yet. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file, or use 'Try Demo Account'."
+        ),
+      };
     }
     const { error } = await supabase.auth.signUp({
       email,

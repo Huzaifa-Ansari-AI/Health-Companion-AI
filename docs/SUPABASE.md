@@ -91,8 +91,45 @@ Row Level Security is enabled on all tables. Under no circumstances should RLS b
 
 ## 5. Required Environment Variables
 
-For the frontend application:
+For the frontend application (`.env` in project root):
 ```bash
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-anon-key
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
+*(Note: `VITE_SUPABASE_PUBLISHABLE_KEY` is also supported as a direct alias).*
+
+---
+
+## 6. Step-by-Step Supabase Project Setup
+
+1. **Create or Open Supabase Project:**
+   Navigate to the [Supabase Dashboard](https://supabase.com/dashboard) and create or select your project.
+
+2. **Retrieve API Credentials:**
+   - In your project, go to **Project Settings > API**.
+   - Copy the **Project URL** (e.g. `https://xyzproject.supabase.co`).
+   - Copy the **`anon` `public`** API key.
+
+3. **Configure Local Environment:**
+   - Create a `.env` file in the project root:
+     ```bash
+     VITE_SUPABASE_URL=https://xyzproject.supabase.co
+     VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     ```
+   - Verify that `.env` is listed in `.gitignore` (never commit real keys).
+
+4. **Execute Database Migration:**
+   - Open the **SQL Editor** in the Supabase Dashboard.
+   - Copy and paste the contents of [`supabase/migrations/20260929_init_schema.sql`](file:///d:/01_Career/01_Agentic%20AI/innerglow-insights/supabase/migrations/20260929_init_schema.sql).
+   - Click **Run** to provision `profiles`, `health_assessments`, RLS policies, and the `on_auth_user_created` trigger.
+
+5. **Configure Authentication Settings:**
+   - Go to **Authentication > Providers > Email**.
+   - For local development without email delays, toggle **Confirm email** OFF (or leave ON if you prefer verifying email via inbox).
+   - Go to **Authentication > URL Configuration**:
+     - **Site URL:** `http://localhost:8080`
+     - **Redirect URLs:** `http://localhost:8080/**`
+
+6. **Restart Vite Dev Server:**
+   Restart `npm run dev` so Vite loads the new `.env` variables into memory.
+

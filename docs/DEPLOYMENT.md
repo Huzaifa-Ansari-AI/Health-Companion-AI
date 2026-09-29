@@ -20,7 +20,7 @@ Configure the following environment variables in your deployment dashboard (e.g.
 | Variable Name | Required | Description | Example |
 |---|---|---|---|
 | `VITE_SUPABASE_URL` | Yes | Your Supabase Project URL | `https://xyzcompany.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Yes | Your Supabase Publishable / Anon Key | `eyJhbGciOiJIUzI1...` |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Your Supabase Anon / Public Key (or `VITE_SUPABASE_PUBLISHABLE_KEY`) | `eyJhbGciOiJIUzI1...` |
 
 > [!IMPORTANT]
 > Never configure `SUPABASE_SERVICE_ROLE_KEY` or AI Provider API keys in frontend hosting environments.
