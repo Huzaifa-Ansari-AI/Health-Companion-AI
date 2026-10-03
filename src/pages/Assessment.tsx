@@ -120,7 +120,12 @@ const Assessment: React.FC = () => {
       });
       navigate("/dashboard");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to persist assessment data.";
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+          ? String((err as Record<string, unknown>).message)
+          : "Failed to persist assessment data.";
       toast({
         title: "Error saving assessment",
         description: message,

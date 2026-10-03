@@ -84,7 +84,7 @@ export async function fetchUserAssessments(userId: string, isDemo = false): Prom
 
   if (error) {
     console.error("Error fetching assessments from Supabase:", error);
-    throw error;
+    throw new Error(error.message || "Failed to load assessments from database.");
   }
 
   return data || [];
@@ -107,6 +107,21 @@ export async function saveAssessment(
     return fullRecord;
   }
 
+  // Ensure user's profile row exists in public.profiles to satisfy foreign key constraint
+  if (record.user_id) {
+    try {
+      await supabase.from("profiles").upsert(
+        {
+          id: record.user_id,
+          email: "",
+        },
+        { onConflict: "id", ignoreDuplicates: true }
+      );
+    } catch {
+      // Non-blocking if profile already exists or trigger handled it
+    }
+  }
+
   const { data, error } = await supabase
     .from("health_assessments")
     .insert([record])
@@ -115,7 +130,7 @@ export async function saveAssessment(
 
   if (error) {
     console.error("Error saving assessment to Supabase:", error);
-    throw error;
+    throw new Error(error.message || "Failed to save assessment to database.");
   }
 
   return data;

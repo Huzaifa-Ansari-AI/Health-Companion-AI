@@ -37,7 +37,12 @@ const Dashboard: React.FC = () => {
         const records = await fetchUserAssessments(user.id, isDemo);
         setAssessments(records);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Could not retrieve assessment history.";
+        const message =
+          err instanceof Error
+            ? err.message
+            : typeof err === "object" && err !== null && "message" in err
+            ? String((err as Record<string, unknown>).message)
+            : "Could not retrieve assessment history.";
         toast({
           title: "Failed to load records",
           description: message,
