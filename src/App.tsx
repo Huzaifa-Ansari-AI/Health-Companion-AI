@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Assessment from "./pages/Assessment";
 import Chat from "./pages/Chat";
+import Report from "./pages/Report";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Chat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports/:assessmentId"
+              element={
+                <ProtectedRoute>
+                  <Report />
                 </ProtectedRoute>
               }
             />

@@ -18,6 +18,7 @@ import {
   TrendingUp,
   MessageSquare,
   HelpCircle,
+  FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -137,11 +138,13 @@ const Dashboard: React.FC = () => {
                 Start AI Consultation
               </Button>
             </Link>
-            {latest && (
-              <Button variant="outline" size="sm" onClick={handlePrintReport} className="gap-2 rounded-xl">
-                <Download className="w-4 h-4" />
-                Download Report
-              </Button>
+            {latest && latest.id && (
+              <Link to={`/reports/${latest.id}`}>
+                <Button variant="outline" size="sm" className="gap-2 rounded-xl">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <span className="hidden sm:inline">View Full</span> Report
+                </Button>
+              </Link>
             )}
           </div>
         </div>
@@ -245,11 +248,21 @@ const Dashboard: React.FC = () => {
                     <Sparkles className="w-4 h-4" />
                     <span>AI Wellness Summary</span>
                   </div>
-                  {latest.source === "chat" && (
-                    <Badge variant="outline" className="text-2xs border-primary/30 text-primary">
-                      From AI Chat
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {latest.source === "chat" && (
+                      <Badge variant="outline" className="text-2xs border-primary/30 text-primary">
+                        From AI Chat
+                      </Badge>
+                    )}
+                    {latest.id && (
+                      <Link to={`/reports/${latest.id}`}>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary h-7 px-2.5 rounded-lg">
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>View Report</span>
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
                 <CardTitle className="text-xl">Personalized Health Observations</CardTitle>
                 <CardDescription>
@@ -323,8 +336,18 @@ const Dashboard: React.FC = () => {
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-1">{item.ai_summary}</p>
                       </div>
-                      <div className="text-xs text-muted-foreground sm:text-right flex-shrink-0">
-                        {new Date(item.created_at || Date.now()).toLocaleDateString()}
+                      <div className="flex items-center gap-3 sm:flex-col sm:items-end justify-between shrink-0">
+                        <div className="text-xs text-muted-foreground sm:text-right">
+                          {new Date(item.created_at || Date.now()).toLocaleDateString()}
+                        </div>
+                        {item.id && (
+                          <Link to={`/reports/${item.id}`}>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary hover:text-primary p-0 sm:px-2">
+                              <span>View Report</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}
