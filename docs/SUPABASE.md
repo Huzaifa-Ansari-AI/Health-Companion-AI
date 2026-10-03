@@ -61,6 +61,23 @@ Stores immutable records of biometric assessments, symptoms, risk calculations, 
 | `disclaimer` | TEXT | NOT NULL | Medical disclaimer notice |
 | `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Timestamp of assessment |
 
+### `public.report_shares` (Milestone 2)
+Stores time-limited, read-only immutable report snapshots accessible via cryptographically hashed tokens.
+Migration file: [`supabase/migrations/20261004130000_m2_report_shares.sql`](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/supabase/migrations/20261004130000_m2_report_shares.sql)
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique share record ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `assessment_id` | UUID | NOT NULL, References `health_assessments(id)` ON DELETE CASCADE | Target assessment ID |
+| `token_hash` | TEXT | NOT NULL, UNIQUE | SHA-256 hash of the 32-byte secret access token |
+| `snapshot` | JSONB | NOT NULL | Immutable sanitized `ReportData` snapshot at share time |
+| `expires_at` | TIMESTAMPTZ | NOT NULL, CHECK (`expires_at > created_at`) | Share link expiration timestamp (max 7 days) |
+| `revoked_at` | TIMESTAMPTZ | NULL | Revocation timestamp if explicitly revoked |
+| `view_count` | INTEGER | NOT NULL DEFAULT 0 CHECK (`view_count >= 0`) | Number of times the report has been viewed |
+| `last_viewed_at` | TIMESTAMPTZ | NULL | Timestamp of most recent view |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Creation timestamp |
+
 ---
 
 ## 3. Row Level Security (RLS)
@@ -74,17 +91,30 @@ Row Level Security is enabled on all tables. Under no circumstances should RLS b
 - **`health_assessments`:**
   - `SELECT`: `auth.uid() = user_id` (User can read only their own assessments)
   - `INSERT`: `auth.uid() = user_id` (User can insert only records mapped to their own UID)
-  - `DELETE`: `auth.uid() = user_id` (User can delete their own assessment history)
+- **`report_shares`:**
+  - `SELECT`: `auth.uid() = user_id` (User can read only their own share records)
+  - `INSERT`: `auth.uid() = user_id` (User can create shares only for their own assessments)
+  - `UPDATE`: `auth.uid() = user_id` (User can revoke only their own share links)
+  - `DELETE`: `auth.uid() = user_id` (User can delete their own share records)
+  - **CRITICAL:** **NO public policies exist on `report_shares`**. Public access is mediated strictly through the server-side `get-shared-report` Edge Function with SHA-256 token verification and IP rate limiting.
 
 ---
 
-## 4. Supabase Edge Functions (AI Processing)
+## 4. Supabase Edge Functions
 
-- **Function Directory:** [`supabase/functions/analyze-health/`](file:///d:/01_Career/01_Agentic%20AI/innerglow-insights/supabase/functions/analyze-health/)
-- **Security:** Requires bearer token validation. The secret AI Provider key (`AI_API_KEY`) is stored strictly in Supabase Edge Secrets (`supabase secrets set AI_API_KEY=...`) and is never delivered to the client.
+| Function Name | Auth Requirement | Purpose & Security Controls |
+|---|---|---|
+| `analyze-health` | JWT (Authenticated) | Risk assessment and habit generation. |
+| `chat-consult` | JWT (Authenticated) | Symptom discovery chatbot with emergency detector and prompt injection sanitization. |
+| `create-share-link` | JWT (Authenticated) | Creates expiring share link, generates 32-byte token, computes SHA-256 hash, stores immutable snapshot. |
+| `get-shared-report` | Public (No JWT) | Validates public token hash, checks expiration and revocation, increments view count, returns snapshot with uniform error masking. Rate limited per IP (30 req/min). |
+| `revoke-share-link` | JWT (Authenticated) | Sets `revoked_at` timestamp on active share links owned by caller. |
+| `generate-doctor-questions` | JWT (Authenticated) | Synthesizes 4-6 non-diagnostic physician discussion questions with strict guardrails. |
+
+- **Security & Secret Management:** AI provider keys (`GEMINI_API_KEY`, `OPENAI_API_KEY`) and `SUPABASE_SERVICE_ROLE_KEY` reside exclusively in Supabase Edge Secrets (`supabase secrets set ...`). They are never exposed to the client or version control.
 - **Safety Policy:**
   - Categorical risk outputs only (`Low` | `Medium` | `High`).
-  - No medication prescriptions or direct clinical diagnosis.
+  - No medication prescriptions, dosages, or direct clinical diagnoses.
   - Enforces mandatory medical disclaimer: *"This is not a medical diagnosis."*
 
 ---

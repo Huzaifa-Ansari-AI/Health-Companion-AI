@@ -32,20 +32,30 @@ The **AI Health Assistant** is an independent, production-ready health awareness
 ## 2. Layer Responsibilities
 
 ### Presentation Layer (Frontend)
-- **Framework:** React 18 with TypeScript.
-- **Routing:** `react-router-dom` v6 with client-side protected route wrappers.
+- **Framework:** React 18 with TypeScript (strict mode).
+- **Routing:** `react-router-dom` v6 with client-side protected route wrappers (`ProtectedRoute`) and public verified share routes (`/shared/:token`).
 - **State & Query:** React Context (`AuthContext`) for authentication state; `@tanstack/react-query` for query caching.
 - **UI & Styling:** Tailwind CSS + Radix UI primitives (`shadcn/ui`) with custom wellness theme tokens.
+- **Report & Document Components:** `ReportView.tsx` (8-section responsive & printable template), `CompleteDetailsDialog.tsx` (demographics), `ShareReportDialog.tsx` (privacy-first sharing), `SharedLinksManager.tsx`.
 
 ### Business & Service Layer
 - **Biometric Calculations:** Client-side deterministic BMI calculations (`healthService.ts`).
-- **Data Persistence:** Direct Supabase client interaction with auto session injection and RLS authorization.
-- **Fallback Simulation:** Dedicated Demo Mode allowing immediate zero-friction evaluation.
+- **Report Synthesizer:** Pure `buildReportData` builder function, activity habit scoring (0-100), and doctor discussion points generator (`reportService.ts`).
+- **Vector PDF Generator:** Client-side vector PDF generation with selectable text, A4 layout, dynamic multi-page flow, and embedded QR verification code (`pdfService.ts` via `pdf-lib` and `qrcode`).
+- **Cryptographic Share Service:** 32-byte secure token handling, SHA-256 hashing, immutable snapshotting, and revocation management (`shareService.ts`).
+- **Fallback Simulation:** Dedicated Demo Mode allowing immediate zero-friction offline evaluation.
 
 ### Backend & AI Layer
-- **Database:** Supabase PostgreSQL with strict Row Level Security.
-- **Edge Functions:** Supabase Deno Edge Function (`analyze-health`) encapsulating AI reasoning and secret management.
+- **Database:** Supabase PostgreSQL with strict Row Level Security (tables: `profiles`, `health_assessments`, `chat_sessions`, `chat_messages`, `report_shares`).
+- **Edge Functions:**
+  - `analyze-health`: Multi-variable risk assessment and habit generation.
+  - `chat-consult`: Multi-turn conversational symptom exploration with emergency interceptor.
+  - `create-share-link`: Authenticated link creation with SHA-256 token hashing and snapshot immutability.
+  - `get-shared-report`: Public read-only endpoint with per-IP rate limiting and uniform error masking.
+  - `revoke-share-link`: Immediate access revocation.
+  - `generate-doctor-questions`: Non-diagnostic physician discussion questions generator.
 - **Safety Gateways:**
   - Mandatory disclaimer: *"This is not a medical diagnosis."*
   - Strict categorical risk ratings: `Low` | `Medium` | `High`.
   - Non-prescriptive, habit-oriented recommendations.
+  - No public database policies: public sharing mediated strictly via verified token hashes.

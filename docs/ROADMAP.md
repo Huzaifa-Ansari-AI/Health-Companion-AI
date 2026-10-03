@@ -54,19 +54,19 @@ flowchart LR
 
 ---
 
-## Milestone 2: Dynamic Health Reports & Medical-Grade PDF Export
-> **Goal:** Provide patients and doctors with beautifully formatted, professional health summaries they can print or download.
+## Milestone 2: Dynamic Health Reports & PDF Export
+> **Goal:** Provide patients and doctors with beautifully formatted, professional health summaries they can view, print, download, or share.
 
-- [ ] **2.1 Standardized Report Template:**
+- [x] **2.1 Standardized Report Template:**
   - Patient demographics (age, gender, BMI).
   - Chief complaints / symptoms timeline.
   - Lifestyle factors (sleep, hydration, activity score).
   - Categorical Risk Assessment with clear disclaimers.
   - Doctor discussion points (suggested questions the patient can ask their physician).
-- [ ] **2.2 High-Fidelity PDF Generator:**
-  - Client-side or Edge-generated vector PDF with clean typography, branded headers, and QR code verification.
-- [ ] **2.3 Secure Shareable Links:**
-  - Temporary read-only access link with expiration for sharing with healthcare providers.
+- [x] **2.2 High-Fidelity PDF Generator:**
+  - Client-side vector PDF (`pdf-lib`) with clean typography, branded headers, page numbers, selectable text, and QR code verification (`qrcode`).
+- [x] **2.3 Secure Shareable Links:**
+  - Temporary read-only access link with expiration (24h, 3d, 7d), token hashing (SHA-256), immutable snapshots, and privacy toggles.
 
 ---
 
