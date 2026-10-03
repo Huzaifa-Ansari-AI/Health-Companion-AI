@@ -13,6 +13,7 @@ import Assessment from "./pages/Assessment";
 import Chat from "./pages/Chat";
 import Report from "./pages/Report";
 import SharedReport from "./pages/SharedReport";
+import Checkin from "./pages/Checkin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Chat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/checkin"
+              element={
+                <ProtectedRoute>
+                  <Checkin />
                 </ProtectedRoute>
               }
             />

@@ -21,6 +21,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { TodayCheckinCard } from "@/components/dashboard/TodayCheckinCard";
 
 const Dashboard: React.FC = () => {
   const { user, signOut, isDemo } = useAuth();
@@ -161,6 +162,9 @@ const Dashboard: React.FC = () => {
             <strong>Medical Notice:</strong> AI Health Assistant provides general wellness awareness. This is not a medical diagnosis.
           </span>
         </div>
+
+        {/* Milestone 3: Daily Health Check-in Card */}
+        <TodayCheckinCard />
 
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">

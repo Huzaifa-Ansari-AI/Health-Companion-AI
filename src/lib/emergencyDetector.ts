@@ -74,7 +74,7 @@ const EMERGENCY_CATEGORIES: EmergencyCategory[] = [
   {
     name: "Crisis / Self-Harm / Overdose",
     patterns: [
-      /\b(?:suicide|suicidal|kill\s*myself|want\s*to\s*die|end\s*my\s*life|take\s*my\s*life)\b/i,
+      /\b(?:suicide|suicidal|kill(?:ing)?\s*myself|want(?:ing)?\s*to\s*die|end(?:ing)?\s*my\s*life|tak(?:e|ing)\s*my\s*life)\b/i,
       /\b(?:overdose|overdosed|swallowed\s*(?:a\s*bottle|toxic|bleach|pills))\b/i,
       /\bself\s*harm\b/i,
     ],
