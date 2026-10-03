@@ -9,8 +9,10 @@ import { fetchReportData, fetchProfileDemographics } from "@/services/reportServ
 import { ReportData, ProfileDemographics } from "@/types/report";
 import { ReportView } from "@/components/report/ReportView";
 import { CompleteDetailsDialog } from "@/components/report/CompleteDetailsDialog";
+import { ShareReportDialog } from "@/components/report/ShareReportDialog";
+import { SharedLinksManager } from "@/components/report/SharedLinksManager";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Report: React.FC = () => {
@@ -24,6 +26,8 @@ const Report: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [refreshSharesTrigger, setRefreshSharesTrigger] = useState(0);
 
   const loadData = async () => {
     if (!assessmentId || !user) return;
@@ -120,11 +124,32 @@ const Report: React.FC = () => {
             </div>
           </div>
         ) : (
-          <>
+          <div className="space-y-8">
             <ReportView
               report={report}
               onEditDetails={() => setIsDetailsDialogOpen(true)}
+              actionSlot={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsShareDialogOpen(true)}
+                  className="gap-1.5 rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share with Doctor</span>
+                </Button>
+              }
             />
+
+            {assessmentId && user && (
+              <SharedLinksManager
+                assessmentId={assessmentId}
+                userId={user.id}
+                isDemo={isDemo}
+                onOpenCreate={() => setIsShareDialogOpen(true)}
+                refreshTrigger={refreshSharesTrigger}
+              />
+            )}
 
             {user && (
               <CompleteDetailsDialog
@@ -136,7 +161,19 @@ const Report: React.FC = () => {
                 onSaved={handleDemographicsSaved}
               />
             )}
-          </>
+
+            {assessmentId && user && (
+              <ShareReportDialog
+                open={isShareDialogOpen}
+                onOpenChange={setIsShareDialogOpen}
+                assessmentId={assessmentId}
+                report={report}
+                userId={user.id}
+                isDemo={isDemo}
+                onShareCreated={() => setRefreshSharesTrigger((c) => c + 1)}
+              />
+            )}
+          </div>
         )}
       </main>
     </div>
