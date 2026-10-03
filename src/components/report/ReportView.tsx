@@ -17,11 +17,15 @@ import {
   Printer,
   Edit2,
   CheckCircle2,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface ReportViewProps {
   report: ReportData;
+  verificationUrl?: string;
   onEditDetails?: () => void;
   onPrint?: () => void;
   actionSlot?: React.ReactNode;
@@ -29,10 +33,13 @@ interface ReportViewProps {
 
 export const ReportView: React.FC<ReportViewProps> = ({
   report,
+  verificationUrl,
   onEditDetails,
   onPrint,
   actionSlot,
 }) => {
+  const { toast } = useToast();
+  const [isDownloadingPdf, setIsDownloadingPdf] = React.useState(false);
   const { header, patient, symptoms, lifestyle, risk, recommendations, doctorQuestions, footer } =
     report;
 
@@ -41,6 +48,27 @@ export const ReportView: React.FC<ReportViewProps> = ({
       onPrint();
     } else {
       window.print();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const { downloadReportPdf } = await import("@/services/pdfService");
+      await downloadReportPdf(report, verificationUrl);
+      toast({
+        title: "PDF Download Complete",
+        description: "Your vector health summary PDF has been saved.",
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to generate PDF.";
+      toast({
+        title: "Download Failed",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -103,6 +131,24 @@ export const ReportView: React.FC<ReportViewProps> = ({
           <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 rounded-xl">
             <Printer className="w-3.5 h-3.5" />
             <span>Print Report</span>
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={isDownloadingPdf}
+            className="gap-1.5 rounded-xl shadow-2xs"
+          >
+            {isDownloadingPdf ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Generating PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5" />
+                <span>Download PDF</span>
+              </>
+            )}
           </Button>
           {actionSlot}
         </div>
