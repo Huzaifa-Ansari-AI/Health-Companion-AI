@@ -9,6 +9,7 @@ import {
   UserAchievement,
   AchievementKey,
 } from "@/types/tracking";
+import { evaluateAchievements } from "@/lib/streaks";
 
 // ============================================================================
 // STORAGE KEYS FOR DEMO MODE
@@ -418,4 +419,33 @@ export async function unlockAchievement(
 
   return data as UserAchievement;
 }
+
+/**
+ * Automatically evaluates eligible achievements and persists any newly unlocked ones.
+ */
+export async function syncUserAchievements(
+  userId: string,
+  checkins: DailyCheckin[],
+  hasAssessment: boolean = false,
+  isDemo = false
+): Promise<UserAchievement[]> {
+  const current = await getUserAchievements(userId, isDemo);
+  const eligibleKeys = evaluateAchievements(checkins, hasAssessment);
+  const currentKeys = new Set(current.map((a) => a.key));
+
+  const newlyUnlocked: UserAchievement[] = [];
+  for (const key of eligibleKeys) {
+    if (!currentKeys.has(key)) {
+      const unlocked = await unlockAchievement(userId, key, isDemo);
+      newlyUnlocked.push(unlocked);
+      currentKeys.add(key);
+    }
+  }
+
+  if (newlyUnlocked.length > 0) {
+    return [...current, ...newlyUnlocked];
+  }
+  return current;
+}
+
 

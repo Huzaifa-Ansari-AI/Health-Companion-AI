@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TodayCheckinCard } from "@/components/dashboard/TodayCheckinCard";
+import { StreakProgressCard } from "@/components/dashboard/StreakProgressCard";
 
 const Dashboard: React.FC = () => {
   const { user, signOut, isDemo } = useAuth();
@@ -165,6 +166,9 @@ const Dashboard: React.FC = () => {
 
         {/* Milestone 3: Daily Health Check-in Card */}
         <TodayCheckinCard />
+
+        {/* Milestone 3: Wellness Streaks & Milestones Showcase */}
+        <StreakProgressCard hasAssessment={assessments.length > 0} />
 
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
