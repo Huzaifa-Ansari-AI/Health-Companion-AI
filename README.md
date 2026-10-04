@@ -78,7 +78,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-anon-key
 ```bash
 npm run dev
 ```
-Open your browser at `http://localhost:8080`.
+Open your browser at `http://localhost:5174`.
 
 ### 5. Production Build
 ```bash

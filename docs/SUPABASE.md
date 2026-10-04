@@ -217,8 +217,8 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
      - **For real email verification testing:** Leave **Confirm email** **ON**. When signing up, users will see the "Check your email" screen with a 60-second resend cooldown timer.
      - *(Manual confirmation shortcut):* In the Supabase Dashboard under **Authentication > Users**, you can click the three dots (`...`) next to any unconfirmed user and select **Confirm User** to manually activate them.
    - Go to **Authentication > URL Configuration**:
-     - **Site URL:** `http://localhost:8080` (or your production domain on deployment)
-     - **Redirect URLs:** `http://localhost:8080/**` (add `https://your-domain.com/**` for production)
+     - **Site URL:** `http://localhost:5174` (or your production domain on deployment)
+     - **Redirect URLs:** `http://localhost:5174/**` (add `https://your-domain.com/**` for production)
    - **Production Launch Reminder:**
      - Before public launch, always ensure **Confirm email** is set to **ON**.
      - Note that Supabase's built-in default email service has a strict rate limit (~3 emails/hour on free tier). For production (Milestone 5), configure a custom SMTP provider (e.g. Resend, SendGrid, or AWS SES) in **Project Settings > Authentication > SMTP Settings**.
