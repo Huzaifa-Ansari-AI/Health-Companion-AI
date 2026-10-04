@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { TodayCheckinCard } from "@/components/dashboard/TodayCheckinCard";
 import { StreakProgressCard } from "@/components/dashboard/StreakProgressCard";
+import { TrendsSummaryCard } from "@/components/dashboard/TrendsSummaryCard";
 
 const Dashboard: React.FC = () => {
   const { user, signOut, isDemo } = useAuth();
@@ -169,6 +170,9 @@ const Dashboard: React.FC = () => {
 
         {/* Milestone 3: Wellness Streaks & Milestones Showcase */}
         <StreakProgressCard hasAssessment={assessments.length > 0} />
+
+        {/* Milestone 3: 7-Day Health Rhythm Snapshot Card */}
+        <TrendsSummaryCard />
 
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">

@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -15,6 +16,8 @@ import Report from "./pages/Report";
 import SharedReport from "./pages/SharedReport";
 import Checkin from "./pages/Checkin";
 import NotFound from "./pages/NotFound";
+
+const Trends = lazy(() => import("./pages/Trends"));
 
 const queryClient = new QueryClient();
 
@@ -58,6 +61,16 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Checkin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trends"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<div className="min-h-screen bg-muted/30 flex items-center justify-center text-sm text-muted-foreground">Loading trends...</div>}>
+                    <Trends />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
