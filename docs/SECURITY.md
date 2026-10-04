@@ -48,3 +48,15 @@ Sharing personal health data requires defense-in-depth against unauthorized acce
 8. **Anti-Indexing Protection:** The `/shared/:token` page programmatically injects `<meta name="robots" content="noindex, nofollow" />` directives to prevent search engine indexing.
 9. **Time-Limited & Revocable Access:** Links strictly expire after 24 hours, 3 days, or 7 days (maximum 7 days). Users can instantaneously revoke any active link from the management panel.
 
+---
+
+## 6. Longitudinal Tracking & Privacy Boundaries (Milestone 3)
+
+Daily wellness tracking requires clear privacy boundaries between objective biometric trends and private personal reflections:
+
+1. **Strict Reflection Isolation:** Freeform notes and daily mood scores are strictly private to the user. They are NEVER included in generated vector PDF reports, printed summaries, or public doctor share links.
+2. **Client-Side & Server-Side Crisis Interception:** The daily check-in freeform notes field is screened through the `detectEmergencyOrCrisis` detector. Any language indicating self-harm, severe distress, or emergency triggers an immediate empathetic crisis intervention modal with direct access to crisis lifelines (988 Suicide & Crisis Lifeline) before submission.
+3. **Non-Causal Analytics Phrasing:** The correlation between sleep duration and reported fatigue strictly requires ≥7 data points and uses neutral non-causal phrasing ("In your logged data, higher fatigue occurred on days with..."). It never claims diagnostic causation or replaces clinical sleep evaluation.
+4. **Optional Report Inclusion:** Longitudinal vitals trends in generated reports are strictly OFF by default and require deliberate user opt-in via toolbar toggle.
+5. **Owner-Only RLS Policies:** `daily_checkins`, `body_measurements`, and `user_achievements` strictly enforce `auth.uid() = user_id` on all CRUD operations. No public database policies exist.
+

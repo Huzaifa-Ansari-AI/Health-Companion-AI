@@ -7,6 +7,8 @@
 | `/dashboard` | `Dashboard.tsx` | Protected (`ProtectedRoute`) | User dashboard displaying latest BMI, risk level, recommendations, and assessment history |
 | `/assessment` | `Assessment.tsx` | Protected (`ProtectedRoute`) | Multi-step interactive health check (Biometrics, Symptoms, Lifestyle, AI Review) |
 | `/chat` | `Chat.tsx` | Protected (`ProtectedRoute`) | Full-screen conversational AI symptom consultation, quick reply chips, emergency detection, and history |
+| `/checkin` | `Checkin.tsx` | Protected (`ProtectedRoute`) | Quick 30-second daily wellness & habit log (mood, sleep, hydration, activity, notes) with safety filter |
+| `/trends` | `Trends.tsx` (Lazy) | Protected (`ProtectedRoute`) | Interactive longitudinal analytics and charts (BMI, sleep/fatigue, hydration, activity, mood/energy) |
 | `/reports/:assessmentId` | `Report.tsx` | Protected (`ProtectedRoute`) | Structured 8-section wellness summary report, on-screen view, A4 print, PDF export, and share controls |
 | `/shared/:token` | `SharedReport.tsx` | Public (Token Verified) | Read-only doctor view of shared wellness report, expiring access, noindex/nofollow privacy header |
 | `*` | `NotFound.tsx` | Public | 404 Not Found error page |

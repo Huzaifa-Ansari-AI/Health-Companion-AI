@@ -78,6 +78,50 @@ Migration file: [`supabase/migrations/20261004130000_m2_report_shares.sql`](file
 | `last_viewed_at` | TIMESTAMPTZ | NULL | Timestamp of most recent view |
 | `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Creation timestamp |
 
+### `public.daily_checkins` (Milestone 3)
+Stores 30-second daily habit logs, vitals, mood, energy, and private reflections.
+Migration file: [`supabase/migrations/20261004140000_m3_tracking_schema.sql`](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/supabase/migrations/20261004140000_m3_tracking_schema.sql)
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique log ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `checkin_date` | DATE | NOT NULL | Calendar date of check-in (UNIQUE per user) |
+| `mood` | SMALLINT | CHECK (`mood BETWEEN 1 AND 5`) | 1 (Very Low) to 5 (Great) |
+| `sleep_hours` | NUMERIC(3,1) | CHECK (`sleep_hours BETWEEN 0 AND 24`) | Rest duration |
+| `water_intake_ml` | INTEGER | CHECK (`water_intake_ml BETWEEN 0 AND 10000`) | Daily hydration in ml |
+| `daily_energy` | SMALLINT | CHECK (`daily_energy BETWEEN 1 AND 5`) | Energy score |
+| `activity_level` | TEXT | CHECK (`activity_level IN ('Sedentary', 'Light', 'Moderate', 'Very Active')`) | Activity tier |
+| `activity_minutes` | INTEGER | CHECK (`activity_minutes BETWEEN 0 AND 1440`) | Active workout minutes |
+| `reported_fatigue` | SMALLINT | CHECK (`reported_fatigue BETWEEN 1 AND 5`) | Self-reported fatigue score |
+| `notes` | TEXT | NULL (Limit 500 chars) | Private reflection notes (crisis-filtered) |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Last update timestamp |
+
+### `public.body_measurements` (Milestone 3)
+Stores longitudinal biometric logs (weight, height, BMI) over time.
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique entry ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `measured_date` | DATE | NOT NULL | Date of measurement |
+| `height_cm` | NUMERIC(5,2) | CHECK (`height_cm > 0`) | Height |
+| `weight_kg` | NUMERIC(5,2) | CHECK (`weight_kg > 0`) | Weight |
+| `bmi` | NUMERIC(4,1) | NOT NULL | Calculated Body Mass Index |
+| `bmi_category` | TEXT | NOT NULL | Underweight / Normal / Overweight / Obesity |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Creation timestamp |
+
+### `public.user_achievements` (Milestone 3)
+Tracks unlocked wellness milestones and streak badges.
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Record ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `badge_id` | TEXT | NOT NULL (UNIQUE with `user_id`) | E.g. `first_checkin`, `streak_3`, `streak_7` |
+| `unlocked_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Unlock timestamp |
+
 ---
 
 ## 3. Row Level Security (RLS)
@@ -97,6 +141,20 @@ Row Level Security is enabled on all tables. Under no circumstances should RLS b
   - `UPDATE`: `auth.uid() = user_id` (User can revoke only their own share links)
   - `DELETE`: `auth.uid() = user_id` (User can delete their own share records)
   - **CRITICAL:** **NO public policies exist on `report_shares`**. Public access is mediated strictly through the server-side `get-shared-report` Edge Function with SHA-256 token verification and IP rate limiting.
+- **`daily_checkins`:**
+  - `SELECT`: `auth.uid() = user_id` (Owner only)
+  - `INSERT`: `auth.uid() = user_id` (Owner only)
+  - `UPDATE`: `auth.uid() = user_id` (Owner only)
+  - `DELETE`: `auth.uid() = user_id` (Owner only)
+- **`body_measurements`:**
+  - `SELECT`: `auth.uid() = user_id` (Owner only)
+  - `INSERT`: `auth.uid() = user_id` (Owner only)
+  - `UPDATE`: `auth.uid() = user_id` (Owner only)
+  - `DELETE`: `auth.uid() = user_id` (Owner only)
+- **`user_achievements`:**
+  - `SELECT`: `auth.uid() = user_id` (Owner only)
+  - `INSERT`: `auth.uid() = user_id` (Owner only)
+  - `UPDATE`: `auth.uid() = user_id` (Owner only)
 
 ---
 

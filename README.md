@@ -7,13 +7,16 @@ An independent, production-ready AI Health Assistant web application that helps 
 ## Key Features
 
 - **Interactive AI Symptom Consultation:** Conversational AI engine exploring symptoms with emergency red-flag interceptors and structured consultation synthesis.
-- **Dynamic Health & Wellness Reports:** 8-section standardized wellness summary with patient vitals, symptoms timeline, lifestyle scoring (0-100), categorical risk assessment (`Low` / `Medium` / `High`), and doctor discussion points.
+- **Dynamic Health & Wellness Reports:** 8-section standardized wellness summary with patient vitals, symptoms timeline, lifestyle scoring (0-100), categorical risk assessment (`Low` / `Medium` / `High`), optional 7-day vitals trends, and doctor discussion points.
 - **Client-Side Vector PDF Export:** High-fidelity, multi-page vector PDF generation (`pdf-lib`) with selectable text, A4 layout, dynamic pagination, and embedded QR code verification (`qrcode`).
 - **Secure Expiring Share Links:** Share immutable wellness snapshots with doctors via 32-byte cryptographic tokens, SHA-256 server-side hashing, privacy anonymization toggles, and zero public database policies.
+- **Longitudinal Trend Analytics (`Recharts`):** Interactive visualization suite (`/trends`) featuring BMI progression, sleep vs. fatigue correlations (≥7 logs), hydration tracking, physical activity timelines, and mood & energy distribution.
+- **Daily 30-Second Wellness Check-in:** Rapid daily habit tracking (`/checkin`) capturing sleep, hydration, activity, mood, and private notes with integrated client/server crisis intervention guards.
+- **Streak & Achievement Gamification:** Calendar-accurate streak counting, milestones (First Check-in, 3-Day & 7-Day Streaks, Hydration Hero, Sleep Champion), and positive motivation without guilt mechanics.
 - **Public Verified Doctor View:** Read-only report view (`/shared/:token`) with automatic `noindex, nofollow` SEO privacy headers, expiration banners, and uniform error masking.
 - **Personalized Health Assessment:** Step-by-step biometric evaluation covering height, weight, BMI, symptoms, and daily habits.
 - **Persistent Dashboard & History:** Track health assessments over time with instant "View Report" actions.
-- **Isolated Demo Mode:** Zero-friction offline testing without requiring an external database connection.
+- **Isolated Demo Mode:** Zero-friction offline testing without requiring an external database connection across all assessments, check-ins, achievements, and trend charts.
 - **Strict Medical Boundaries:** Mandatory disclaimers (*"This is not a medical diagnosis"*) and non-prescriptive lifestyle guidance.
 
 ---

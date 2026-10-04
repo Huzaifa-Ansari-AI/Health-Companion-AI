@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Download,
   Loader2,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +41,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
 }) => {
   const { toast } = useToast();
   const [isDownloadingPdf, setIsDownloadingPdf] = React.useState(false);
+  const [includeTrends, setIncludeTrends] = React.useState(false);
   const { header, patient, symptoms, lifestyle, risk, recommendations, doctorQuestions, footer } =
     report;
 
@@ -122,6 +124,19 @@ export const ReportView: React.FC<ReportViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer select-none mr-2">
+            <input
+              type="checkbox"
+              id="include-trends-toggle"
+              checked={includeTrends}
+              onChange={(e) => setIncludeTrends(e.target.checked)}
+              className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5 cursor-pointer"
+            />
+            <span className="flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5 text-primary" />
+              <span>Include 7-Day Vitals</span>
+            </span>
+          </label>
           {onEditDetails && (
             <Button variant="outline" size="sm" onClick={onEditDetails} className="gap-1.5 rounded-xl">
               <Edit2 className="w-3.5 h-3.5" />
@@ -292,6 +307,44 @@ export const ReportView: React.FC<ReportViewProps> = ({
             </div>
           </div>
         </section>
+
+        {/* OPTIONAL SECTION: 7-DAY VITALS TREND SUMMARY (Milestone 3) */}
+        {includeTrends && (
+          <section className="space-y-3 break-inside-avoid">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4" />
+                <span>Recent Longitudinal Vitals (7-Day Overview)</span>
+              </h2>
+              <Badge variant="outline" className="text-2xs text-muted-foreground border-border/80">
+                Privacy Guarded • Notes & Reflections Excluded
+              </Badge>
+            </div>
+            <div className="p-4 rounded-xl bg-muted/20 border border-border/60 text-xs space-y-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Objective vitals aggregate summary from your recent wellness tracking logs. For personal privacy, freeform notes and mood reflections are strictly omitted from doctor exports.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <div className="p-2.5 rounded-lg bg-card border border-border/40">
+                  <span className="text-muted-foreground block text-2xs uppercase tracking-wide">Avg Rest / Sleep</span>
+                  <strong className="text-sm text-foreground">{lifestyle.sleepHours}</strong>
+                </div>
+                <div className="p-2.5 rounded-lg bg-card border border-border/40">
+                  <span className="text-muted-foreground block text-2xs uppercase tracking-wide">Avg Hydration</span>
+                  <strong className="text-sm text-foreground">{lifestyle.hydrationLiters}</strong>
+                </div>
+                <div className="p-2.5 rounded-lg bg-card border border-border/40">
+                  <span className="text-muted-foreground block text-2xs uppercase tracking-wide">Activity Status</span>
+                  <strong className="text-sm text-foreground">{lifestyle.activityLevel}</strong>
+                </div>
+                <div className="p-2.5 rounded-lg bg-card border border-border/40">
+                  <span className="text-muted-foreground block text-2xs uppercase tracking-wide">Logging Habit</span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">Active In Journey</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* SECTION 5: CATEGORICAL RISK ASSESSMENT */}
         <section className="space-y-3 break-inside-avoid">

@@ -29,7 +29,7 @@ flowchart LR
 - [ ] **0.3 Automated Testing Foundation:**
   - Set up Vitest and React Testing Library.
   - Add unit tests for core utilities (`calculateBMI`, risk indicator logic, auth state helpers).
-- [ ] **0.4 Code Cleanliness & Production Verification:**
+- [x] **0.4 Code Cleanliness & Production Verification:**
   - Clean build output, verify strict TypeScript checks (`tsc --noEmit`), zero ESLint warnings/errors.
   - Commit milestone completion to GitHub with a clean semantic tag.
 
@@ -38,18 +38,18 @@ flowchart LR
 ## Milestone 1: Interactive AI Symptom Consultation Chatbot
 > **Goal:** Empower users to chat naturally about their symptoms, concerns, and health questions, receiving empathetic, safe, and structured AI guidance.
 
-- [ ] **1.1 Chatbot Interface & Experience:**
+- [x] **1.1 Chatbot Interface & Experience:**
   - Full-screen / drawer conversational interface with smooth micro-animations.
   - Typing indicator, quick-reply suggestion chips (e.g., "Frequent headaches", "Sleep issues", "Digestive problems").
   - Persistent chat history per user saved in Supabase.
-- [ ] **1.2 Conversational AI Engine (Gemini / OpenAI Integration):**
+- [x] **1.2 Conversational AI Engine (Gemini / OpenAI Integration):**
   - Multi-turn conversation maintaining contextual symptom discovery.
   - Guardrails & Safety Filters: Emergency detection (e.g. chest pain, stroke symptoms triggers immediate emergency warning + 911/emergency dispatch advice).
   - Categorical risk determination (Low / Medium / High).
-- [ ] **1.3 Automated Consultation Report Generation:**
+- [x] **1.3 Automated Consultation Report Generation:**
   - AI extracts reported symptoms, duration, intensity, and lifestyle factors from the chat.
   - Synthesizes a structured "Health Assessment Summary" ready for review or export.
-- [ ] **1.4 Direct Database Sync:**
+- [x] **1.4 Direct Database Sync:**
   - Automatically saves the synthesized assessment into the user's Supabase dashboard.
 
 ---
@@ -73,11 +73,11 @@ flowchart LR
 ## Milestone 3: Health Vitals Analytics & Longitudinal Tracking
 > **Goal:** Transform single-use assessments into a continuous health journey with trend tracking and habit adherence.
 
-- [ ] **3.1 Visual Trend Charts (`Recharts`):**
+- [x] **3.1 Visual Trend Charts (`Recharts`):**
   - BMI history progression graph over weeks/months.
   - Sleep duration vs. reported fatigue correlation.
   - Hydration and physical activity tracking.
-- [ ] **3.2 Daily Habit & Wellness Check-in:**
+- [x] **3.2 Daily Habit & Wellness Check-in:**
   - 30-second daily check-in (mood, sleep hours, water intake, daily energy score).
   - Streak tracking and milestone achievements.
 
