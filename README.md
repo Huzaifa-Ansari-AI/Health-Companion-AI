@@ -6,14 +6,21 @@ An independent, production-ready AI Health Assistant web application that helps 
 
 ## Key Features
 
-- **Personalized Health Assessment:** Step-by-step evaluation covering biometrics, symptom awareness, and daily habits (sleep, hydration, activity).
-- **Automated BMI Calculation:** Real-time BMI scoring with categorical health range indicators.
-- **Categorical Risk Assessment:** Transparent risk level classifications (`Low` / `Medium` / `High`).
-- **Actionable AI Recommendations:** Practical lifestyle advice for nutrition, exercise, sleep, and hydration.
-- **Persistent Dashboard & History:** Track health assessments over time.
-- **Downloadable Health Report:** Quick browser-native print and export feature for records.
-- **Isolated Demo Mode:** Instant exploration without requiring immediate account creation.
-- **Strict Medical Boundaries:** Enforces clear safety disclaimers (*"This is not a medical diagnosis"*).
+- **Interactive AI Symptom Consultation:** Conversational AI engine exploring symptoms with emergency red-flag interceptors and structured consultation synthesis.
+- **Dynamic Health & Wellness Reports:** 8-section standardized wellness summary with patient vitals, symptoms timeline, lifestyle scoring (0-100), categorical risk assessment (`Low` / `Medium` / `High`), optional 7-day vitals trends, and doctor discussion points.
+- **Client-Side Vector PDF Export:** High-fidelity, multi-page vector PDF generation (`pdf-lib`) with selectable text, A4 layout, dynamic pagination, and embedded QR code verification (`qrcode`).
+- **Secure Expiring Share Links:** Share immutable wellness snapshots with doctors via 32-byte cryptographic tokens, SHA-256 server-side hashing, privacy anonymization toggles, and zero public database policies.
+- **Longitudinal Trend Analytics (`Recharts`):** Interactive visualization suite (`/trends`) featuring BMI progression, sleep vs. fatigue correlations (≥7 logs), hydration tracking, physical activity timelines, and mood & energy distribution.
+- **Daily 30-Second Wellness Check-in:** Rapid daily habit tracking (`/checkin`) capturing sleep, hydration, activity, mood, and private notes with integrated client/server crisis intervention guards.
+- **Streak & Achievement Gamification:** Calendar-accurate streak counting, milestones (First Check-in, 3-Day & 7-Day Streaks, Hydration Hero, Sleep Champion), and positive motivation without guilt mechanics.
+- **Patient Health Profile & Personalization (`/profile`):** Known allergies with severity ratings, health conditions, family health history, current medications (strictly non-prescriptive background context), and profile completeness scoring (0-100%).
+- **Privacy-Focused Data Management Center:** 5 granular opt-in consent toggles (default OFF), append-only audit trail logging, single-click machine-readable JSON data export, and permanent two-step cascade account & data deletion.
+- **Consent-Guarded AI Personalization:** AI consultation context minimization filter mapping exact ages to brackets, stripping identifiers, and enforcing non-diagnostic boundaries.
+- **Public Verified Doctor View:** Read-only report view (`/shared/:token`) with automatic `noindex, nofollow` SEO privacy headers, expiration banners, and uniform error masking.
+- **Personalized Health Assessment:** Step-by-step biometric evaluation covering height, weight, BMI, symptoms, and daily habits.
+- **Persistent Dashboard & History:** Track health assessments over time with instant "View Report" actions.
+- **Isolated Demo Mode:** Zero-friction offline testing without requiring an external database connection across all assessments, check-ins, achievements, and trend charts.
+- **Strict Medical Boundaries:** Mandatory disclaimers (*"This is not a medical diagnosis"*) and non-prescriptive lifestyle guidance.
 
 ---
 
@@ -74,7 +81,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-anon-key
 ```bash
 npm run dev
 ```
-Open your browser at `http://localhost:8080`.
+Open your browser at `http://localhost:5174`.
 
 ### 5. Production Build
 ```bash

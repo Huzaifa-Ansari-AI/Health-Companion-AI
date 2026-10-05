@@ -1,14 +1,15 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { HealthAssessmentSummary } from "@/types/chat";
 
 export interface AssessmentRecord {
   id?: string;
   user_id?: string;
-  height_cm: number;
-  weight_kg: number;
-  bmi: number;
-  bmi_category: string;
+  height_cm?: number;
+  weight_kg?: number;
+  bmi?: number;
+  bmi_category?: string;
   symptoms: string[];
-  lifestyle_data: {
+  lifestyle_data?: {
     sleep_hours?: number;
     activity_level?: string;
     water_liters?: number;
@@ -17,6 +18,9 @@ export interface AssessmentRecord {
   ai_summary: string;
   recommendations: string[];
   disclaimer: string;
+  source?: "assessment" | "chat";
+  session_id?: string;
+  chat_summary_data?: Record<string, unknown>;
   created_at?: string;
 }
 
@@ -80,7 +84,7 @@ export async function fetchUserAssessments(userId: string, isDemo = false): Prom
 
   if (error) {
     console.error("Error fetching assessments from Supabase:", error);
-    throw error;
+    throw new Error(error.message || "Failed to load assessments from database.");
   }
 
   return data || [];
@@ -103,6 +107,21 @@ export async function saveAssessment(
     return fullRecord;
   }
 
+  // Ensure user's profile row exists in public.profiles to satisfy foreign key constraint
+  if (record.user_id) {
+    try {
+      await supabase.from("profiles").upsert(
+        {
+          id: record.user_id,
+          email: "",
+        },
+        { onConflict: "id", ignoreDuplicates: true }
+      );
+    } catch {
+      // Non-blocking if profile already exists or trigger handled it
+    }
+  }
+
   const { data, error } = await supabase
     .from("health_assessments")
     .insert([record])
@@ -111,8 +130,48 @@ export async function saveAssessment(
 
   if (error) {
     console.error("Error saving assessment to Supabase:", error);
-    throw error;
+    throw new Error(error.message || "Failed to save assessment to database.");
   }
 
   return data;
 }
+
+/**
+ * Saves a synthesized AI chat consultation summary into health_assessments.
+ * Prevents duplicate rows for the same session.
+ */
+export async function saveChatAssessment(
+  summary: HealthAssessmentSummary,
+  sessionId: string,
+  userId: string,
+  isDemo = false
+): Promise<AssessmentRecord> {
+  const existing = await fetchUserAssessments(userId, isDemo);
+  const alreadySaved = existing.find((a) => a.session_id === sessionId);
+  if (alreadySaved) {
+    return alreadySaved;
+  }
+
+  const record: Omit<AssessmentRecord, "id" | "created_at"> = {
+    user_id: userId,
+    source: "chat",
+    session_id: sessionId,
+    symptoms: summary.symptoms,
+    risk_level: summary.risk_level,
+    ai_summary: summary.summary,
+    recommendations: summary.recommendations,
+    disclaimer: summary.disclaimer,
+    lifestyle_data: {
+      activity_level: summary.lifestyle_factors?.join(", ") || "Reported via AI consultation",
+    },
+    chat_summary_data: {
+      duration: summary.duration,
+      intensity: summary.intensity,
+      lifestyle_factors: summary.lifestyle_factors,
+      doctor_questions: summary.doctor_questions,
+    },
+  };
+
+  return saveAssessment(record, isDemo);
+}
+

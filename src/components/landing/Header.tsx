@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Heart, LayoutDashboard, LogOut } from "lucide-react";
+import { Heart, LayoutDashboard, LogOut, MessageSquare, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
@@ -22,6 +22,10 @@ const Header = () => {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
+            <Link to="/chat" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>AI Chatbot</span>
+            </Link>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               How it works
             </a>
@@ -37,8 +41,20 @@ const Header = () => {
           <div className="flex items-center gap-3">
             {user ? (
               <>
+                <Link to="/chat">
+                  <Button variant="outline" size="sm" className="gap-1.5 hidden sm:inline-flex rounded-xl">
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    <span>AI Chat</span>
+                  </Button>
+                </Link>
+                <Link to="/profile">
+                  <Button variant="outline" size="sm" className="gap-1.5 hidden md:inline-flex rounded-xl">
+                    <User className="w-4 h-4 text-primary" />
+                    <span>Profile</span>
+                  </Button>
+                </Link>
                 <Link to="/dashboard">
-                  <Button size="sm" className="gap-2">
+                  <Button size="sm" className="gap-2 rounded-xl">
                     <LayoutDashboard className="w-4 h-4" />
                     <span>Dashboard</span>
                   </Button>

@@ -16,8 +16,15 @@ import {
   Sparkles,
   ArrowRight,
   TrendingUp,
+  MessageSquare,
+  HelpCircle,
+  FileText,
+  User,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { TodayCheckinCard } from "@/components/dashboard/TodayCheckinCard";
+import { StreakProgressCard } from "@/components/dashboard/StreakProgressCard";
+import { TrendsSummaryCard } from "@/components/dashboard/TrendsSummaryCard";
 
 const Dashboard: React.FC = () => {
   const { user, signOut, isDemo } = useAuth();
@@ -34,7 +41,12 @@ const Dashboard: React.FC = () => {
         const records = await fetchUserAssessments(user.id, isDemo);
         setAssessments(records);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Could not retrieve assessment history.";
+        const message =
+          err instanceof Error
+            ? err.message
+            : typeof err === "object" && err !== null && "message" in err
+            ? String((err as Record<string, unknown>).message)
+            : "Could not retrieve assessment history.";
         toast({
           title: "Failed to load records",
           description: message,
@@ -96,8 +108,20 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link to="/chat">
+              <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs rounded-xl">
+                <MessageSquare className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">AI Consultation</span>
+              </Button>
+            </Link>
+            <Link to="/profile">
+              <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs rounded-xl">
+                <User className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">Profile</span>
+              </Button>
+            </Link>
             <Link to="/assessment">
-              <Button size="sm" className="gap-1.5 shadow-sm">
+              <Button size="sm" className="gap-1.5 shadow-2xs rounded-xl">
                 <PlusCircle className="w-4 h-4" />
                 <span>New Check</span>
               </Button>
@@ -122,12 +146,22 @@ const Dashboard: React.FC = () => {
               Your personalized AI wellness monitoring & health history dashboard.
             </p>
           </div>
-          {latest && (
-            <Button variant="outline" size="sm" onClick={handlePrintReport} className="gap-2 self-start sm:self-auto">
-              <Download className="w-4 h-4" />
-              Download Report
-            </Button>
-          )}
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <Link to="/chat">
+              <Button size="sm" className="gap-2 shadow-sm rounded-xl">
+                <MessageSquare className="w-4 h-4" />
+                Start AI Consultation
+              </Button>
+            </Link>
+            {latest && latest.id && (
+              <Link to={`/reports/${latest.id}`}>
+                <Button variant="outline" size="sm" className="gap-2 rounded-xl">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <span className="hidden sm:inline">View Full</span> Report
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Disclaimer Banner */}
@@ -137,6 +171,15 @@ const Dashboard: React.FC = () => {
             <strong>Medical Notice:</strong> AI Health Assistant provides general wellness awareness. This is not a medical diagnosis.
           </span>
         </div>
+
+        {/* Milestone 3: Daily Health Check-in Card */}
+        <TodayCheckinCard />
+
+        {/* Milestone 3: Wellness Streaks & Milestones Showcase */}
+        <StreakProgressCard hasAssessment={assessments.length > 0} />
+
+        {/* Milestone 3: 7-Day Health Rhythm Snapshot Card */}
+        <TrendsSummaryCard />
 
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
@@ -167,17 +210,25 @@ const Dashboard: React.FC = () => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription className="flex items-center justify-between">
-                    <span>Current BMI</span>
-                    <TrendingUp className="w-4 h-4 text-primary" />
+                    <span>{latest.source === "chat" ? "Chief Symptom" : "Current BMI"}</span>
+                    {latest.source === "chat" ? (
+                      <MessageSquare className="w-4 h-4 text-primary" />
+                    ) : (
+                      <TrendingUp className="w-4 h-4 text-primary" />
+                    )}
                   </CardDescription>
-                  <CardTitle className="text-3xl font-bold">{latest.bmi}</CardTitle>
+                  <CardTitle className="text-2xl sm:text-3xl font-bold truncate">
+                    {latest.source === "chat" ? latest.symptoms[0] || "Consultation" : latest.bmi}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Badge variant="secondary" className="font-medium text-xs">
-                    {latest.bmi_category}
+                    {latest.source === "chat" ? "From AI Chat" : latest.bmi_category}
                   </Badge>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Height: {latest.height_cm} cm • Weight: {latest.weight_kg} kg
+                    {latest.source === "chat"
+                      ? `Timeline: ${(latest.chat_summary_data?.duration as string) || "Recent"} • Intensity: ${(latest.chat_summary_data?.intensity as string) || "Mild"}`
+                      : `Height: ${latest.height_cm} cm • Weight: ${latest.weight_kg} kg`}
                   </p>
                 </CardContent>
               </Card>
@@ -216,9 +267,26 @@ const Dashboard: React.FC = () => {
             {/* Latest AI Insights Card */}
             <Card className="border-primary/20 shadow-soft">
               <CardHeader>
-                <div className="flex items-center gap-2 text-primary font-semibold text-sm">
-                  <Sparkles className="w-4 h-4" />
-                  <span>AI Wellness Summary</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-primary font-semibold text-sm">
+                    <Sparkles className="w-4 h-4" />
+                    <span>AI Wellness Summary</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {latest.source === "chat" && (
+                      <Badge variant="outline" className="text-2xs border-primary/30 text-primary">
+                        From AI Chat
+                      </Badge>
+                    )}
+                    {latest.id && (
+                      <Link to={`/reports/${latest.id}`}>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary h-7 px-2.5 rounded-lg">
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>View Report</span>
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
                 <CardTitle className="text-xl">Personalized Health Observations</CardTitle>
                 <CardDescription>
@@ -229,6 +297,24 @@ const Dashboard: React.FC = () => {
                 <p className="text-foreground/90 leading-relaxed bg-muted/40 p-4 rounded-xl text-sm">
                   {latest.ai_summary}
                 </p>
+
+                {/* If chat assessment contains doctor discussion questions */}
+                {Boolean((latest.chat_summary_data?.doctor_questions as string[])?.length) && (
+                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/20">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-primary mb-2 flex items-center gap-1.5">
+                      <HelpCircle className="w-4 h-4" />
+                      <span>Questions to Discuss with Your Doctor:</span>
+                    </h4>
+                    <ul className="space-y-1.5">
+                      {(latest.chat_summary_data?.doctor_questions as string[]).map((q, idx) => (
+                        <li key={idx} className="text-xs sm:text-sm text-foreground/90 flex items-start gap-2">
+                          <span className="font-mono text-xs text-primary font-bold">{idx + 1}.</span>
+                          <span>{q}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {latest.recommendations && latest.recommendations.length > 0 && (
                   <div>
@@ -261,14 +347,31 @@ const Dashboard: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-foreground text-sm">
-                            BMI {item.bmi} ({item.bmi_category})
+                            {item.source === "chat"
+                              ? `AI Consultation: ${item.symptoms[0] || "General"}`
+                              : `BMI ${item.bmi} (${item.bmi_category})`}
                           </span>
+                          {item.source === "chat" && (
+                            <Badge variant="outline" className="text-2xs border-primary/30 text-primary">
+                              From AI Chat
+                            </Badge>
+                          )}
                           {getRiskBadge(item.risk_level)}
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-1">{item.ai_summary}</p>
                       </div>
-                      <div className="text-xs text-muted-foreground sm:text-right flex-shrink-0">
-                        {new Date(item.created_at || Date.now()).toLocaleDateString()}
+                      <div className="flex items-center gap-3 sm:flex-col sm:items-end justify-between shrink-0">
+                        <div className="text-xs text-muted-foreground sm:text-right">
+                          {new Date(item.created_at || Date.now()).toLocaleDateString()}
+                        </div>
+                        {item.id && (
+                          <Link to={`/reports/${item.id}`}>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary hover:text-primary p-0 sm:px-2">
+                              <span>View Report</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}

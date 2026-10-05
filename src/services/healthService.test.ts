@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { calculateBMI, fetchUserAssessments, saveAssessment } from "./healthService";
+import { calculateBMI, fetchUserAssessments, saveAssessment, saveChatAssessment } from "./healthService";
 
 describe("healthService - calculateBMI", () => {
   it("calculates normal weight BMI correctly", () => {
@@ -79,5 +79,33 @@ describe("healthService - Demo Assessments Persistence", () => {
 
     const history = await fetchUserAssessments("demo-user", true);
     expect(history[0].bmi).toBe(23.1);
+  });
+
+  it("saves a chat-based consultation summary with source: 'chat'", async () => {
+    const summary = {
+      symptoms: ["Tension headache", "Eye strain"],
+      duration: "3 days",
+      intensity: "Moderate",
+      lifestyle_factors: ["High screen time"],
+      risk_level: "Medium" as const,
+      summary: "Tension headache potentially related to screen exposure.",
+      recommendations: ["Take hourly breaks", "Consult your physician if symptoms worsen"],
+      doctor_questions: ["Could this be migraine-related?"],
+      disclaimer: "This is not a medical diagnosis.",
+    };
+
+    const saved = await saveChatAssessment(summary, "test-session-999", "demo-user", true);
+    expect(saved.source).toBe("chat");
+    expect(saved.session_id).toBe("test-session-999");
+    expect(saved.risk_level).toBe("Medium");
+    expect(saved.symptoms).toContain("Tension headache");
+
+    // Attempt saving duplicate session - should return the already saved record without adding another
+    const duplicate = await saveChatAssessment(summary, "test-session-999", "demo-user", true);
+    expect(duplicate.id).toBe(saved.id);
+
+    const history = await fetchUserAssessments("demo-user", true);
+    const sessionRecords = history.filter((h) => h.session_id === "test-session-999");
+    expect(sessionRecords.length).toBe(1); // Exactly 1 record
   });
 });

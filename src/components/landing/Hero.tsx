@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Sparkles, LayoutDashboard } from "lucide-react";
+import { ArrowRight, Shield, Sparkles, LayoutDashboard, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
@@ -39,16 +39,22 @@ const Hero = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 animate-fade-up animation-delay-300">
             {user ? (
               <>
-                <Link to="/assessment">
-                  <Button variant="hero" size="lg" className="w-full sm:w-auto">
-                    Start Health Check
+                <Link to="/chat">
+                  <Button variant="hero" size="lg" className="w-full sm:w-auto gap-2 shadow-sm">
+                    <MessageSquare className="w-5 h-5" />
+                    <span>AI Consultation</span>
                     <ArrowRight className="w-5 h-5" />
                   </Button>
                 </Link>
+                <Link to="/assessment">
+                  <Button variant="hero-outline" size="lg" className="w-full sm:w-auto">
+                    Start Health Check
+                  </Button>
+                </Link>
                 <Link to="/dashboard">
-                  <Button variant="hero-outline" size="lg" className="w-full sm:w-auto gap-2">
+                  <Button variant="ghost" size="lg" className="w-full sm:w-auto gap-2">
                     <LayoutDashboard className="w-5 h-5" />
-                    View My Dashboard
+                    Dashboard
                   </Button>
                 </Link>
               </>
