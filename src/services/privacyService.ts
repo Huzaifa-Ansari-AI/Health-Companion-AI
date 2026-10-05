@@ -208,3 +208,232 @@ export async function getConsentAuditHistory(
 
   return (data as PrivacyConsentRecord[]) || [];
 }
+
+/**
+ * Triggers a client-side browser file download of JSON data.
+ * Safely no-ops in non-DOM test environments.
+ */
+export function triggerJsonDownload(data: object, filename: string): void {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export interface UserDataExportPayload {
+  export_date: string;
+  app: string;
+  version: string;
+  privacy_notice: string;
+  user_id: string;
+  demographics: unknown;
+  health_profile: unknown;
+  consents: {
+    active: UserConsentsMap;
+    audit_history: PrivacyConsentRecord[];
+  };
+  assessments: unknown[];
+  checkins: unknown[];
+  measurements: unknown[];
+  achievements: unknown[];
+  tracking_streaks: unknown;
+  chat_sessions: unknown[];
+}
+
+/**
+ * Compiles a comprehensive machine-readable JSON package of all user records
+ * and triggers immediate download. Records audit event in data_export_requests.
+ */
+export async function exportUserData(
+  userId: string,
+  isDemo = false
+): Promise<UserDataExportPayload> {
+  const { getComprehensiveProfile } = await import("./profileService");
+  const { fetchUserAssessments } = await import("./healthService");
+  const {
+    getCheckinsByRange,
+    getMeasurementsByRange,
+    getUserAchievements,
+    formatLocalDate,
+    getPastLocalDate,
+  } = await import("./trackingService");
+  const { calculateStreakStats } = await import("@/lib/streaks");
+  const { listChatSessions, loadChatMessages } = await import("./chatService");
+  const { fetchProfileDemographics } = await import("./reportService");
+
+  const today = formatLocalDate();
+  const oneYearAgo = getPastLocalDate(365);
+
+  const [
+    demographics,
+    healthProfile,
+    activeConsents,
+    auditHistory,
+    assessments,
+    checkins,
+    measurements,
+    achievements,
+    chatSessions,
+  ] = await Promise.all([
+    fetchProfileDemographics(userId, isDemo).catch(() => null),
+    getComprehensiveProfile(userId, isDemo).catch(() => null),
+    getUserConsents(userId, isDemo).catch(() => getDefaultConsentsMap()),
+    getConsentAuditHistory(userId, isDemo).catch(() => []),
+    fetchUserAssessments(userId, isDemo).catch(() => []),
+    getCheckinsByRange(userId, oneYearAgo, today, isDemo).catch(() => []),
+    getMeasurementsByRange(userId, undefined, isDemo).catch(() => []),
+    getUserAchievements(userId, isDemo).catch(() => []),
+    listChatSessions(userId, isDemo).catch(() => []),
+  ]);
+
+  const streakStats = calculateStreakStats(
+    checkins.map((c) => c.checkin_date),
+    today
+  );
+
+  // Load messages for each session
+  const populatedSessions = await Promise.all(
+    chatSessions.map(async (s) => {
+      const messages = await loadChatMessages(s.id, isDemo).catch(() => []);
+      return { ...s, messages };
+    })
+  );
+
+  const payload: UserDataExportPayload = {
+    export_date: new Date().toISOString(),
+    app: "Health Companion AI",
+    version: CURRENT_POLICY_VERSION,
+    privacy_notice:
+      "This export contains your personal wellness data aligned with good privacy practices. Keep this file secure.",
+    user_id: userId,
+    demographics,
+    health_profile: healthProfile,
+    consents: {
+      active: activeConsents,
+      audit_history: auditHistory,
+    },
+    assessments,
+    checkins,
+    measurements,
+    achievements,
+    tracking_streaks: streakStats,
+    chat_sessions: populatedSessions,
+  };
+
+  // Record audit row in data_export_requests
+  if (isDemo || !isSupabaseConfigured) {
+    const rawRequests = getStorage().getItem(`healthai_demo_export_requests_${userId}`);
+    const requests = rawRequests ? JSON.parse(rawRequests) : [];
+    requests.unshift({
+      id: `demo-exp-${Date.now()}`,
+      user_id: userId,
+      format: "json",
+      status: "completed",
+      created_at: new Date().toISOString(),
+    });
+    getStorage().setItem(`healthai_demo_export_requests_${userId}`, JSON.stringify(requests));
+  } else {
+    try {
+      await supabase.from("data_export_requests").insert({
+        user_id: userId,
+        format: "json",
+        status: "completed",
+      });
+    } catch {
+      // Non-blocking for download
+    }
+  }
+
+  // Trigger client file download
+  const dateStr = new Date().toISOString().slice(0, 10);
+  triggerJsonDownload(payload, `health-companion-export-${dateStr}.json`);
+
+  return payload;
+}
+
+/**
+ * Permanently deletes all personal data across all database tables.
+ * Irreversible cascade wipe.
+ */
+export async function deleteUserDataCascade(
+  userId: string,
+  isDemo = false
+): Promise<void> {
+  if (isDemo || !isSupabaseConfigured) {
+    // Clear all demo storage keys associated with the user
+    const storage = getStorage();
+    const keysToRemove = [
+      `${DEMO_CONSENTS_KEY_PREFIX}${userId}`,
+      `healthai_demo_health_profile_${userId}`,
+      `healthai_demo_allergies_${userId}`,
+      `healthai_demo_conditions_${userId}`,
+      `healthai_demo_family_history_${userId}`,
+      `healthai_demo_medications_${userId}`,
+      `healthai_demo_daily_checkins_${userId}`,
+      `healthai_demo_tracking_streak_${userId}`,
+      `healthai_demo_export_requests_${userId}`,
+      `healthai_demo_deletion_requests_${userId}`,
+      "healthai_demo_chat_sessions",
+      "healthai_demo_chat_messages",
+      "healthai_demo_assessments",
+      "healthai_demo_profile_demographics",
+    ];
+
+    keysToRemove.forEach((k) => storage.removeItem(k));
+    return;
+  }
+
+  // 1. Log deletion request for compliance
+  try {
+    await supabase.from("account_deletion_requests").insert({
+      user_id: userId,
+      status: "completed",
+      confirmed_at: new Date().toISOString(),
+    });
+  } catch {
+    // Continue with cascade wipe
+  }
+
+  // 2. Cascade delete from child tables
+  const tables = [
+    "privacy_consents",
+    "profile_medications",
+    "profile_family_history",
+    "profile_conditions",
+    "profile_allergies",
+    "health_profiles",
+    "report_shares",
+    "daily_checkins",
+    "tracking_streaks",
+    "chat_messages",
+    "chat_sessions",
+    "health_assessments",
+    "data_export_requests",
+    "account_deletion_requests",
+  ];
+
+  for (const table of tables) {
+    try {
+      await supabase.from(table).delete().eq("user_id", userId);
+    } catch {
+      // Continue wiping remaining tables
+    }
+  }
+
+  // 3. Delete from profiles (which also triggers Postgres CASCADE on any remaining foreign keys)
+  try {
+    await supabase.from("profiles").delete().eq("id", userId);
+  } catch {
+    // Profile deletion attempted
+  }
+}
+

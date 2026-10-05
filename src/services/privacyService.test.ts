@@ -115,4 +115,50 @@ describe("privacyService", () => {
       ).rejects.toThrow();
     });
   });
+
+  describe("Data Portability & Export (exportUserData)", () => {
+    it("compiles a comprehensive archive of user data and active consents", async () => {
+      const { exportUserData } = await import("./privacyService");
+
+      // Set a consent first
+      await updateConsent(
+        TEST_USER,
+        { consent_type: "ai_chat_processing", granted: true },
+        true
+      );
+
+      const payload = await exportUserData(TEST_USER, true);
+
+      expect(payload.user_id).toBe(TEST_USER);
+      expect(payload.app).toBe("Health Companion AI");
+      expect(payload.privacy_notice).toContain("personal wellness data");
+      expect(payload.consents.active.ai_chat_processing.granted).toBe(true);
+      expect(payload.consents.active.ai_profile_context.granted).toBe(false);
+      expect(Array.isArray(payload.assessments)).toBe(true);
+      expect(Array.isArray(payload.checkins)).toBe(true);
+      expect(Array.isArray(payload.chat_sessions)).toBe(true);
+    });
+  });
+
+  describe("Cascade Data Deletion (deleteUserDataCascade)", () => {
+    it("permanently purges user records and clears privacy consents", async () => {
+      const { deleteUserDataCascade } = await import("./privacyService");
+
+      // Grant a consent
+      await updateConsent(
+        TEST_USER,
+        { consent_type: "ai_profile_context", granted: true },
+        true
+      );
+      expect(await hasConsent(TEST_USER, "ai_profile_context", true)).toBe(true);
+
+      // Perform cascade wipe
+      await deleteUserDataCascade(TEST_USER, true);
+
+      // After wipe, all consents are reset to strictly false
+      const consentsAfter = await getUserConsents(TEST_USER, true);
+      expect(consentsAfter.ai_profile_context.granted).toBe(false);
+      expect(consentsAfter.ai_profile_context.updatedAt).toBeNull();
+    });
+  });
 });

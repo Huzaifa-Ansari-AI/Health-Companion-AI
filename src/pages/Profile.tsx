@@ -11,6 +11,7 @@ import {
 import { ProfileCompletenessCard } from "@/components/profile/ProfileCompletenessCard";
 import { BasicDetailsTab } from "@/components/profile/BasicDetailsTab";
 import { HealthHistoryTab } from "@/components/profile/HealthHistoryTab";
+import { PrivacyCenterTab } from "@/components/profile/PrivacyCenterTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -130,14 +131,18 @@ const Profile: React.FC = () => {
 
             {/* Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid grid-cols-2 sm:w-80 p-1 rounded-xl bg-muted/60">
+              <TabsList className="grid grid-cols-3 sm:w-96 p-1 rounded-xl bg-muted/60">
                 <TabsTrigger value="basic" className="gap-1.5 text-xs rounded-lg">
                   <User className="w-3.5 h-3.5" />
-                  <span>Basic Details</span>
+                  <span>Basic</span>
                 </TabsTrigger>
                 <TabsTrigger value="history" className="gap-1.5 text-xs rounded-lg">
                   <Activity className="w-3.5 h-3.5" />
-                  <span>Health History</span>
+                  <span>History</span>
+                </TabsTrigger>
+                <TabsTrigger value="privacy" className="gap-1.5 text-xs rounded-lg">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Privacy & Data</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -175,6 +180,11 @@ const Profile: React.FC = () => {
                     setProfileData((prev) => ({ ...prev, medications }))
                   }
                 />
+              </TabsContent>
+
+              {/* Privacy & Data Tab */}
+              <TabsContent value="privacy" className="focus-visible:outline-hidden">
+                <PrivacyCenterTab userId={user.id} isDemo={isDemo} />
               </TabsContent>
             </Tabs>
           </>
