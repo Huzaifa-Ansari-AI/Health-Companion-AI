@@ -427,64 +427,7 @@ export async function sendChatMessage(
     return mockResponse;
   }
 
-function generateFallbackConsultResponse(content: string): ChatConsultResponse {
-  const lower = content.toLowerCase();
-  let symptom = "general discomfort";
-  let suggested_replies = ["Started today", "A few days", "Mild intensity", "Associated with stress"];
-  let risk_level: RiskLevel = "Low";
-
-  if (lower.includes("headache") || lower.includes("migraine")) {
-    symptom = "headache";
-    suggested_replies = ["Throbbing pain", "Dull ache", "Sensitive to light", "Started today"];
-  } else if (
-    lower.includes("sleep") ||
-    lower.includes("insomnia") ||
-    lower.includes("tired") ||
-    lower.includes("fatigue")
-  ) {
-    symptom = "sleep issues / fatigue";
-    suggested_replies = ["Difficulty falling asleep", "Waking up frequently", "Under 6 hours", "High daily stress"];
-  } else if (
-    lower.includes("stomach") ||
-    lower.includes("digest") ||
-    lower.includes("nausea") ||
-    lower.includes("bloat")
-  ) {
-    symptom = "digestive discomfort";
-    suggested_replies = ["After meals", "Mild nausea", "Cramping", "Lasting a couple days"];
-  } else if (
-    lower.includes("cough") ||
-    lower.includes("fever") ||
-    lower.includes("cold") ||
-    lower.includes("throat")
-  ) {
-    symptom = "respiratory / cold symptoms";
-    suggested_replies = ["Dry cough", "Sore throat", "Low-grade fever", "Started recently"];
-    risk_level = "Medium";
-  } else if (lower.includes("stress") || lower.includes("anxiety") || lower.includes("tense")) {
-    symptom = "stress and tension";
-    suggested_replies = ["Work pressure", "Physical tension", "Poor sleep", "Racing thoughts"];
-  } else {
-    symptom = content.slice(0, 30).trim();
-  }
-
-  const reply = `Thank you for describing your symptoms regarding ${symptom}. To help formulate structured wellness notes for your dashboard, could you let me know how long you've experienced this, whether it feels mild or more intense, and if any daily habits (like sleep or hydration) seem to affect it?`;
-
-  return {
-    reply,
-    risk_level,
-    emergency: false,
-    suggested_replies,
-    extracted: {
-      symptoms: [symptom],
-      duration: "recent",
-      intensity: "mild to moderate",
-      lifestyle: "rest and hydration advised",
-    },
-  };
-}
-
-  // 3. Supabase Edge Function: chat-consult (with automatic resilient fallback)
+  // 3. Supabase Edge Function: chat-consult (throws explicit error on failure, no silent fake mock)
   try {
     const { data, error } = await supabase.functions.invoke("chat-consult", {
       body: {
@@ -493,49 +436,70 @@ function generateFallbackConsultResponse(content: string): ChatConsultResponse {
       },
     });
 
-    if (!error && data && data.reply) {
-      return data as ChatConsultResponse;
+    if (error) {
+      const serverMessage = data?.message || data?.details || error.message;
+      throw new Error(`AI is temporarily unavailable: ${serverMessage}`);
     }
-  } catch {
-    // Edge function not deployed or network hiccup; seamlessly use direct database persistence
+
+    if (data?.error) {
+      throw new Error(`AI is temporarily unavailable: ${data.message || data.details || data.error}`);
+    }
+
+    if (!data || !data.reply) {
+      throw new Error("AI is temporarily unavailable: empty response from consultation service.");
+    }
+
+    return data as ChatConsultResponse;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to communicate with AI consultation engine";
+    throw new Error(message);
+  }
+}
+
+export interface AiDiagnosticResult {
+  ok: boolean;
+  provider?: string;
+  model?: string;
+  latencyMs?: number;
+  message: string;
+}
+
+/**
+ * Runs a server-side connectivity diagnostic test against the AI provider.
+ */
+export async function checkAiHealth(isDemo = false): Promise<AiDiagnosticResult> {
+  if (isDemo) {
+    return {
+      ok: true,
+      provider: "demo-simulator",
+      model: "mock-wellness-engine",
+      latencyMs: 10,
+      message: "Running in Demo Mode: Local simulated guidance is active.",
+    };
   }
 
-  // Resilient Direct Persistence: Save user message and generate safe consultation reply
-  await saveChatMessage(
-    {
-      session_id: sessionId,
-      user_id: userId,
-      role: "user",
-      content: trimmed,
-    },
-    false
-  );
+  try {
+    const { data, error } = await supabase.functions.invoke("chat-consult", {
+      body: { action: "diagnose" },
+    });
 
-  const isPersonalized = await hasConsent(userId, "ai_profile_context", false).catch(() => false);
-  const fallback = generateFallbackConsultResponse(trimmed);
-  fallback.personalized = isPersonalized;
+    if (error) {
+      return {
+        ok: false,
+        message: error.message || "Failed to reach chat-consult diagnostic endpoint.",
+      };
+    }
 
-  await saveChatMessage(
-    {
-      session_id: sessionId,
-      user_id: userId,
-      role: "assistant",
-      content: fallback.reply,
-      metadata: {
-        emergency: false,
-        risk_level: fallback.risk_level,
-        suggested_replies: fallback.suggested_replies,
-        extracted: fallback.extracted,
-        personalized: isPersonalized,
-      },
-    },
-    false
-  );
-
-  await updateChatSession(sessionId, { risk_level: fallback.risk_level }, false);
-
-  return fallback;
+    return data as AiDiagnosticResult;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      message: `Diagnostic check failed: ${msg}`,
+    };
+  }
 }
+
 
 /**
  * Synthesizes a structured Health Assessment Summary from a consultation session.

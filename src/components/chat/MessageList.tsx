@@ -11,6 +11,7 @@ interface MessageListProps {
   isLoading: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onOpenDiagnostics?: () => void;
   isEmergencyActive?: boolean;
   emergencyCategory?: string;
 }
@@ -20,6 +21,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   isLoading,
   error,
   onRetry,
+  onOpenDiagnostics,
   isEmergencyActive = false,
   emergencyCategory,
 }) => {
@@ -72,28 +74,41 @@ export const MessageList: React.FC<MessageListProps> = ({
         </div>
       )}
 
-      {/* Error State with Retry Button */}
+      {/* Error State with Retry & Diagnose Buttons */}
       {error && (
         <div
           role="alert"
-          className="flex items-center justify-between p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs gap-3 my-2"
+          className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs gap-3 my-2"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+            <span className="font-medium leading-relaxed">{error}</span>
           </div>
-          {onRetry && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onRetry}
-              className="h-7 px-2.5 text-xs gap-1 border-destructive/30 hover:bg-destructive/10 text-destructive"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span>Retry</span>
-            </Button>
-          )}
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            {onOpenDiagnostics && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenDiagnostics}
+                className="h-7 px-2.5 text-xs gap-1 border-destructive/30 hover:bg-destructive/10 text-destructive"
+              >
+                <span>Diagnose</span>
+              </Button>
+            )}
+            {onRetry && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                className="h-7 px-2.5 text-xs gap-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Retry</span>
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

@@ -1,18 +1,47 @@
 // AI Output Validation & Normalization Module
 // Client-side and testable utility enforcing strict JSON schema and medical safety invariants.
 
-export interface ValidatedConsultOutput {
+import { z } from "zod";
+
+export const ConsultOutputSchema = z.object({
+  reply: z.string().trim().min(1, "Reply cannot be empty"),
+  risk_level: z
+    .enum(["Low", "Medium", "High"])
+    .nullable()
+    .optional()
+    .transform((val) => val ?? null),
+  emergency: z.boolean().default(false),
+  suggested_replies: z
+    .array(z.string())
+    .default([])
+    .transform((arr) => arr.slice(0, 4)),
+  extracted: z
+    .object({
+      symptoms: z.array(z.string()).default([]),
+      duration: z.string().default(""),
+      intensity: z.string().default(""),
+      lifestyle: z.string().default(""),
+    })
+    .default({
+      symptoms: [],
+      duration: "",
+      intensity: "",
+      lifestyle: "",
+    }),
+});
+
+export type ValidatedConsultOutput = {
   reply: string;
   risk_level: "Low" | "Medium" | "High" | null;
   emergency: boolean;
   suggested_replies: string[];
   extracted: {
-    symptoms?: string[];
-    duration?: string;
-    intensity?: string;
-    lifestyle?: string;
+    symptoms: string[];
+    duration: string;
+    intensity: string;
+    lifestyle: string;
   };
-}
+};
 
 export const SAFE_FALLBACK_OUTPUT: ValidatedConsultOutput = {
   reply:
@@ -29,50 +58,40 @@ export const SAFE_FALLBACK_OUTPUT: ValidatedConsultOutput = {
 };
 
 /**
- * Validates and normalizes raw JSON output from any LLM provider.
+ * Validates and normalizes raw JSON output from any LLM provider using Zod.
  */
 export function validateAndNormalizeOutput(rawJson: unknown): ValidatedConsultOutput | null {
   if (!rawJson || typeof rawJson !== "object") return null;
 
-  const data = rawJson as Record<string, unknown>;
+  // Handle case where raw risk_level is invalid string like "75%"
+  const rawObj = rawJson as Record<string, unknown>;
+  const sanitizedRisk =
+    rawObj.risk_level === "Low" || rawObj.risk_level === "Medium" || rawObj.risk_level === "High"
+      ? rawObj.risk_level
+      : null;
 
-  if (typeof data.reply !== "string" || !data.reply.trim()) {
+  const candidate = {
+    ...rawObj,
+    risk_level: sanitizedRisk,
+  };
+
+  const parsed = ConsultOutputSchema.safeParse(candidate);
+  if (!parsed.success) {
     return null;
   }
 
-  let risk_level: "Low" | "Medium" | "High" | null = null;
-  if (data.risk_level === "Low" || data.risk_level === "Medium" || data.risk_level === "High") {
-    risk_level = data.risk_level;
-  }
-
-  const emergency = Boolean(data.emergency);
-
-  let suggested_replies: string[] = [];
-  if (Array.isArray(data.suggested_replies)) {
-    suggested_replies = data.suggested_replies
-      .filter((item): item is string => typeof item === "string")
-      .slice(0, 4);
-  }
-
-  const rawExtracted =
-    typeof data.extracted === "object" && data.extracted !== null
-      ? (data.extracted as Record<string, unknown>)
-      : {};
-
-  const symptoms = Array.isArray(rawExtracted.symptoms)
-    ? rawExtracted.symptoms.filter((s): s is string => typeof s === "string")
-    : [];
-
+  const { data } = parsed;
   return {
     reply: data.reply.trim(),
-    risk_level,
-    emergency,
-    suggested_replies,
+    risk_level: data.risk_level,
+    emergency: data.emergency,
+    suggested_replies: data.suggested_replies.slice(0, 4),
     extracted: {
-      symptoms,
-      duration: typeof rawExtracted.duration === "string" ? rawExtracted.duration : "",
-      intensity: typeof rawExtracted.intensity === "string" ? rawExtracted.intensity : "",
-      lifestyle: typeof rawExtracted.lifestyle === "string" ? rawExtracted.lifestyle : "",
+      symptoms: data.extracted.symptoms.map((s) => s.trim()).filter(Boolean),
+      duration: data.extracted.duration.trim(),
+      intensity: data.extracted.intensity.trim(),
+      lifestyle: data.extracted.lifestyle.trim(),
     },
   };
 }
+

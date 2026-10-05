@@ -6,7 +6,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "../_shared/emergencyDetector.ts";
 import { buildConsultSystemPrompt } from "../_shared/prompts/consultPrompt.ts";
-import { invokeLLM, LLMMessage, ValidatedConsultOutput } from "../_shared/aiAdapter.ts";
+import { invokeLLM, LLMMessage, ValidatedConsultOutput, testAiConnection } from "../_shared/aiAdapter.ts";
 import { formatProfileContext } from "../_shared/profileContextBuilder.ts";
 
 const corsHeaders = {
@@ -67,6 +67,18 @@ serve(async (req: Request) => {
       });
     }
 
+    // Parse payload
+    const body = await req.json().catch(() => ({}));
+
+    // Diagnostic Action: allows verified users to test AI provider connectivity
+    if (body?.action === "diagnose") {
+      const diagnosticResult = await testAiConnection();
+      return new Response(JSON.stringify(diagnosticResult), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 3. Rate Limit Enforcement
     if (!checkRateLimit(user.id)) {
       return new Response(
@@ -79,7 +91,6 @@ serve(async (req: Request) => {
     }
 
     // 4. Request Payload Validation
-    const body = await req.json();
     const sessionId = body?.session_id;
     const rawMessage = body?.message;
 
@@ -230,7 +241,7 @@ serve(async (req: Request) => {
 
     const systemPrompt = buildConsultSystemPrompt(profileContextPrompt);
 
-    // 9. Invoke AI via Provider Adapter
+    // 9. Invoke AI via Provider Adapter (Throws on failure, no silent mock fallback)
     const aiOutput = await invokeLLM(systemPrompt, contextMessages);
     aiOutput.personalized = isPersonalized;
 
@@ -265,21 +276,18 @@ serve(async (req: Request) => {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal consultation engine error";
+    // Return explicit 503 Service Unavailable so client can show clear retry UI
     return new Response(
       JSON.stringify({
-        error: message,
-        fallback: {
-          reply:
-            "I experienced a temporary connection issue. Please tell me about your symptoms again, or consult a qualified doctor if you feel unwell.",
-          risk_level: "Low",
-          emergency: false,
-          suggested_replies: ["Mild headache", "Fatigue", "Poor sleep"],
-        },
+        error: "AI_UNAVAILABLE",
+        message: "The AI consultation service is temporarily unavailable. Please verify the AI configuration or retry shortly.",
+        details: message,
       }),
       {
-        status: 500,
+        status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   }
 });
+

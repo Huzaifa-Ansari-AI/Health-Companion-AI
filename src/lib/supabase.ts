@@ -69,3 +69,12 @@ export const supabase = createClient(validUrl, validKey, {
     detectSessionInUrl: true,
   },
 });
+
+// Ensure stable functions reference across calls and test mocks
+const functionsInstance = supabase.functions;
+Object.defineProperty(supabase, "functions", {
+  value: functionsInstance,
+  writable: true,
+  configurable: true,
+});
+

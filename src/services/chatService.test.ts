@@ -202,6 +202,50 @@ describe("chatService - sendChatMessage Flow", () => {
     expect(consented.personalized).toBe(true);
     expect(consented.reply).toContain("Personalized with your health profile");
   });
+
+  it("throws an explicit error when production chat-consult fails without falling back to fake text", async () => {
+    const invokeSpy = vi.spyOn(supabase.functions, "invoke").mockResolvedValue({
+      data: { error: "AI_UNAVAILABLE", message: "GEMINI_API_KEY secret is not set in Supabase." },
+      error: new Error("503 Service Unavailable"),
+    });
+
+    await expect(
+      sendChatMessage("test-session-id", "test-user-id", "I have persistent dizziness", false)
+    ).rejects.toThrow("AI is temporarily unavailable");
+
+    invokeSpy.mockRestore();
+  });
+
+  it("runs checkAiHealth diagnostics in demo mode", async () => {
+    const { checkAiHealth } = await import("./chatService");
+    const result = await checkAiHealth(true);
+    expect(result.ok).toBe(true);
+    expect(result.provider).toBe("demo-simulator");
+    expect(result.message).toContain("Demo Mode");
+  });
+
+  it("runs checkAiHealth diagnostics in production mode via Edge Function invoke", async () => {
+    const { checkAiHealth } = await import("./chatService");
+    const invokeSpy = vi.spyOn(supabase.functions, "invoke").mockResolvedValue({
+      data: {
+        ok: true,
+        provider: "gemini",
+        model: "gemini-1.5-flash",
+        latencyMs: 145,
+        message: "Gemini connection verified successfully (145ms).",
+      },
+      error: null,
+    });
+
+    const result = await checkAiHealth(false);
+    expect(invokeSpy).toHaveBeenCalledWith("chat-consult", {
+      body: { action: "diagnose" },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.model).toBe("gemini-1.5-flash");
+
+    invokeSpy.mockRestore();
+  });
 });
 
 describe("chatService - generateHealthSummary", () => {

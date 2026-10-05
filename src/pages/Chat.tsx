@@ -18,6 +18,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
 import { SessionList } from "@/components/chat/SessionList";
 import { HealthSummaryDialog } from "@/components/chat/HealthSummaryDialog";
+import { AiDiagnosticDialog } from "@/components/chat/AiDiagnosticDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -27,6 +28,7 @@ import {
   FileText,
   Plus,
   User,
+  Activity,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,6 +47,7 @@ const Chat: React.FC = () => {
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [diagnosticModalOpen, setDiagnosticModalOpen] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState<HealthAssessmentSummary | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
@@ -269,6 +272,18 @@ const Chat: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* AI Connection Diagnostics Shortcut */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDiagnosticModalOpen(true)}
+            className="h-8 px-2 gap-1.5 text-muted-foreground hover:text-foreground rounded-xl hidden sm:flex text-xs"
+            title="Run Real-Time AI Connection Diagnostics"
+          >
+            <Activity className="w-3.5 h-3.5 text-primary" />
+            <span className="hidden lg:inline">AI Diagnostics</span>
+          </Button>
+
           {/* Health Profile Shortcut */}
           <Button
             variant="ghost"
@@ -355,6 +370,7 @@ const Chat: React.FC = () => {
             isLoading={sendMessageMutation.isPending || (isMessagesLoading && messages.length === 0)}
             error={lastError}
             onRetry={lastFailedMessage ? handleRetry : undefined}
+            onOpenDiagnostics={() => setDiagnosticModalOpen(true)}
             isEmergencyActive={isEmergencyActive}
             emergencyCategory="Acute Symptoms"
           />
@@ -385,6 +401,13 @@ const Chat: React.FC = () => {
         isLoading={isGeneratingSummary}
         onSave={handleSaveSummary}
         isAlreadySaved={isAlreadySaved}
+      />
+
+      {/* 5. AI Service Diagnostics Modal */}
+      <AiDiagnosticDialog
+        open={diagnosticModalOpen}
+        onOpenChange={setDiagnosticModalOpen}
+        isDemo={isDemo}
       />
     </div>
   );
