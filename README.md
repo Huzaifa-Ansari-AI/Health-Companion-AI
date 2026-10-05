@@ -13,6 +13,9 @@ An independent, production-ready AI Health Assistant web application that helps 
 - **Longitudinal Trend Analytics (`Recharts`):** Interactive visualization suite (`/trends`) featuring BMI progression, sleep vs. fatigue correlations (≥7 logs), hydration tracking, physical activity timelines, and mood & energy distribution.
 - **Daily 30-Second Wellness Check-in:** Rapid daily habit tracking (`/checkin`) capturing sleep, hydration, activity, mood, and private notes with integrated client/server crisis intervention guards.
 - **Streak & Achievement Gamification:** Calendar-accurate streak counting, milestones (First Check-in, 3-Day & 7-Day Streaks, Hydration Hero, Sleep Champion), and positive motivation without guilt mechanics.
+- **Patient Health Profile & Personalization (`/profile`):** Known allergies with severity ratings, health conditions, family health history, current medications (strictly non-prescriptive background context), and profile completeness scoring (0-100%).
+- **Privacy-Focused Data Management Center:** 5 granular opt-in consent toggles (default OFF), append-only audit trail logging, single-click machine-readable JSON data export, and permanent two-step cascade account & data deletion.
+- **Consent-Guarded AI Personalization:** AI consultation context minimization filter mapping exact ages to brackets, stripping identifiers, and enforcing non-diagnostic boundaries.
 - **Public Verified Doctor View:** Read-only report view (`/shared/:token`) with automatic `noindex, nofollow` SEO privacy headers, expiration banners, and uniform error masking.
 - **Personalized Health Assessment:** Step-by-step biometric evaluation covering height, weight, BMI, symptoms, and daily habits.
 - **Persistent Dashboard & History:** Track health assessments over time with instant "View Report" actions.

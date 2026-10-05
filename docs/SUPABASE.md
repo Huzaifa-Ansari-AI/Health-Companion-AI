@@ -122,6 +122,83 @@ Tracks unlocked wellness milestones and streak badges.
 | `badge_id` | TEXT | NOT NULL (UNIQUE with `user_id`) | E.g. `first_checkin`, `streak_3`, `streak_7` |
 | `unlocked_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Unlock timestamp |
 
+### `public.health_profiles` (Milestone 4)
+Stores core extended profile demographics, age, gender, and timezone.
+Migration file: [`supabase/migrations/20261005120000_m4_health_profile_privacy.sql`](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/supabase/migrations/20261005120000_m4_health_profile_privacy.sql)
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `user_id` | UUID | Primary Key, References `profiles(id)` ON DELETE CASCADE | Matches auth UID |
+| `date_of_birth` | DATE | NULL | Optional exact date of birth |
+| `age` | INTEGER | CHECK (`age BETWEEN 18 AND 120`) | Self-reported adult age |
+| `gender` | TEXT | Limit 50 chars | Optional gender identity |
+| `time_zone` | TEXT | Limit 50 chars | User's preferred timezone |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Record creation timestamp |
+| `updated_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Last update timestamp |
+
+### `public.profile_allergies` (Milestone 4)
+Known allergies with categorical severity ratings.
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique allergy ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `name` | TEXT | NOT NULL, Limit 100 chars | Name of allergen |
+| `reaction` | TEXT | NULL, Limit 200 chars | Description of reaction |
+| `severity` | TEXT | CHECK (`severity IN ('mild', 'moderate', 'severe')`) | Severity tier |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Record timestamp |
+
+### `public.profile_conditions` (Milestone 4)
+Health conditions with active/managed/past status tags.
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique condition ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `name` | TEXT | NOT NULL, Limit 100 chars | Name of condition |
+| `status` | TEXT | CHECK (`status IN ('active', 'managed', 'past')`) | Condition lifecycle status |
+| `since_year` | INTEGER | CHECK (`since_year >= 1900`) | Year diagnosed/noticed |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Record timestamp |
+
+### `public.profile_family_history` (Milestone 4)
+Family health background records.
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique record ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `condition_name`| TEXT | NOT NULL, Limit 100 chars | Name of hereditary condition |
+| `relation` | TEXT | NOT NULL, Limit 60 chars | E.g. Mother, Father, Grandparent |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Record timestamp |
+
+### `public.profile_medications` (Milestone 4)
+Reported current medications (Background context only — non-prescriptive).
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique medication ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `name` | TEXT | NOT NULL, Limit 100 chars | Name of medication |
+| `dose_text` | TEXT | NULL, Limit 80 chars | Dosage note (context only) |
+| `frequency_text`| TEXT | NULL, Limit 80 chars | Frequency note (context only) |
+| `is_current` | BOOLEAN | DEFAULT `true` | Active vs past medication |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Record timestamp |
+
+### `public.privacy_consents` (Milestone 4)
+Append-only audit trail of granular user permission grants and revocations.
+
+| Column | Type | Constraints / Defaults | Description |
+|---|---|---|---|
+| `id` | UUID | Primary Key, DEFAULT `gen_random_uuid()` | Unique consent event ID |
+| `user_id` | UUID | NOT NULL, References `profiles(id)` ON DELETE CASCADE | Owner UID |
+| `consent_type` | TEXT | CHECK (`consent_type IN ('ai_chat_processing', 'ai_profile_context', 'ai_report_generation', 'share_links', 'analytics')`) | Granular feature permission |
+| `granted` | BOOLEAN | NOT NULL | Permission state (`true` = granted, `false` = revoked) |
+| `policy_version`| TEXT | NOT NULL DEFAULT `'1.0'` | Privacy policy version active at time of event |
+| `created_at` | TIMESTAMPTZ | DEFAULT `timezone('utc', now())` | Immutable event timestamp |
+
+### `public.data_export_requests` & `public.account_deletion_requests` (Milestone 4)
+Audit logs for data portability requests and account deletion compliance.
+
 ---
 
 ## 3. Row Level Security (RLS)
@@ -132,20 +209,27 @@ Row Level Security is enabled on all tables. Under no circumstances should RLS b
   - `SELECT`: `auth.uid() = id` (User can read only their own profile)
   - `UPDATE`: `auth.uid() = id` (User can update only their own profile)
   - `INSERT`: `auth.uid() = id`
+  - `DELETE`: `auth.uid() = id` (User can delete their own profile)
 - **`health_assessments`:**
   - `SELECT`: `auth.uid() = user_id` (User can read only their own assessments)
   - `INSERT`: `auth.uid() = user_id` (User can insert only records mapped to their own UID)
+  - `DELETE`: `auth.uid() = user_id`
 - **`report_shares`:**
   - `SELECT`: `auth.uid() = user_id` (User can read only their own share records)
   - `INSERT`: `auth.uid() = user_id` (User can create shares only for their own assessments)
   - `UPDATE`: `auth.uid() = user_id` (User can revoke only their own share links)
   - `DELETE`: `auth.uid() = user_id` (User can delete their own share records)
   - **CRITICAL:** **NO public policies exist on `report_shares`**. Public access is mediated strictly through the server-side `get-shared-report` Edge Function with SHA-256 token verification and IP rate limiting.
-- **`daily_checkins`:**
+- **`daily_checkins` & `body_measurements` & `user_achievements`:**
+  - `SELECT`, `INSERT`, `UPDATE`, `DELETE`: `auth.uid() = user_id` (Owner only)
+- **`health_profiles`, `profile_allergies`, `profile_conditions`, `profile_family_history`, `profile_medications`:**
+  - `SELECT`, `INSERT`, `UPDATE`, `DELETE`: `auth.uid() = user_id` (Owner only)
+- **`privacy_consents` (Append-Only):**
   - `SELECT`: `auth.uid() = user_id` (Owner only)
   - `INSERT`: `auth.uid() = user_id` (Owner only)
-  - `UPDATE`: `auth.uid() = user_id` (Owner only)
-  - `DELETE`: `auth.uid() = user_id` (Owner only)
+  - **NO UPDATE OR DELETE POLICIES:** Log is strictly immutable and append-only.
+- **`data_export_requests` & `account_deletion_requests`:**
+  - `SELECT`, `INSERT`: `auth.uid() = user_id` (Owner only)
 - **`body_measurements`:**
   - `SELECT`: `auth.uid() = user_id` (Owner only)
   - `INSERT`: `auth.uid() = user_id` (Owner only)

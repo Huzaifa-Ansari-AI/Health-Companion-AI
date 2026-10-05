@@ -86,12 +86,19 @@ flowchart LR
 ## Milestone 4: Patient Profile, Personalization & Privacy Readiness
 > **Goal:** Medical history context, profile customization, and healthcare data privacy standards.
 
-- [ ] **4.1 Comprehensive Health Profile:**
-  - Known allergies, chronic conditions, family history, and current medications (for AI context only).
-- [ ] **4.2 Data Privacy & Security (HIPAA/GDPR Alignment):**
-  - "Download My Data" full JSON/PDF export.
-  - Complete account & data deletion button (with Supabase CASCADE cleanup).
-  - Granular privacy toggles for AI inference consent.
+- [x] **4.1 Comprehensive Health Profile:**
+  - Patient demographics (age, gender, timezone).
+  - Known allergies with severity levels (mild, moderate, severe).
+  - Health conditions with status (active, managed, past).
+  - Family health history tracking.
+  - Current medications (background context only, strictly non-prescriptive, no dosage changes).
+  - Profile completeness meter (0-100%) with actionable next steps.
+  - AI data minimization filter (`buildAiProfileContext`) mapping exact age to brackets and stripping identifiers.
+- [x] **4.2 Data Privacy & Security (Privacy-Focused, Aligned with Good Privacy Practices):**
+  - "Download My Data" full machine-readable JSON archive export.
+  - Complete account & data deletion flow with explicit two-step confirmation (`DELETE MY DATA`) and Supabase CASCADE cleanup.
+  - Granular opt-in privacy toggles (5 distinct consents, default OFF) with append-only audit trail log.
+  - Strict owner-only Row-Level Security (RLS) on all 8 health profile and privacy tables.
 
 ---
 
