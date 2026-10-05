@@ -19,6 +19,7 @@ export interface ChatMessageMetadata {
   risk_level?: RiskLevel | null;
   suggested_replies?: string[];
   extracted?: ChatExtractedData;
+  personalized?: boolean;
 }
 
 export interface ChatSession {
@@ -47,6 +48,7 @@ export interface ChatConsultResponse {
   emergency: boolean;
   suggested_replies: string[];
   extracted: ChatExtractedData;
+  personalized?: boolean;
 }
 
 export interface HealthAssessmentSummary {

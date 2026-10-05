@@ -26,6 +26,7 @@ import {
   Menu,
   FileText,
   Plus,
+  User,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -268,7 +269,19 @@ const Chat: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Generate Summary CTA for Phase 4 */}
+          {/* Health Profile Shortcut */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/profile")}
+            className="h-8 px-2 gap-1.5 text-muted-foreground hover:text-foreground rounded-xl hidden sm:flex text-xs"
+            title="Configure Health Profile & Privacy Consents"
+          >
+            <User className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Profile & Consents</span>
+          </Button>
+
+          {/* Generate Summary CTA */}
           <Button
             variant="outline"
             size="sm"

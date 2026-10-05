@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Copy,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -90,7 +91,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             {isUser ? "You" : "Health Companion"}
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {!isUser && message.metadata?.personalized && (
+              <Badge
+                variant="outline"
+                className="bg-primary/5 text-primary border-primary/20 text-2xs gap-1 py-0 px-1.5 font-normal shadow-2xs"
+                title="Personalized using your health profile context"
+              >
+                <Sparkles className="w-2.5 h-2.5 text-primary" aria-hidden="true" />
+                <span>Personalized</span>
+              </Badge>
+            )}
             {!isUser && renderRiskBadge(message.metadata?.risk_level)}
             {!isUser && (
               <button

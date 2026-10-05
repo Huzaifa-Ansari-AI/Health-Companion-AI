@@ -36,3 +36,10 @@ You MUST respond with a single, strictly valid JSON object conforming to this ex
   }
 }
 `;
+
+export function buildConsultSystemPrompt(profileContext?: string): string {
+  if (!profileContext || !profileContext.trim()) {
+    return SYSTEM_PROMPT_V1;
+  }
+  return `${SYSTEM_PROMPT_V1}\n\n${profileContext.trim()}`;
+}

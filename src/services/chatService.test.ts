@@ -178,6 +178,30 @@ describe("chatService - sendChatMessage Flow", () => {
       sendChatMessage("demo-session-default", "demo-user-id", "   ", true)
     ).rejects.toThrow("Message cannot be empty");
   });
+
+  it("sets personalized flag based on ai_profile_context consent", async () => {
+    // 1. Without consent granted
+    const unconsented = await sendChatMessage(
+      "demo-session-default",
+      "demo-user-id",
+      "I have mild fatigue today.",
+      true
+    );
+    expect(unconsented.personalized).toBe(false);
+
+    // 2. Grant consent
+    const { updateConsent } = await import("./privacyService");
+    await updateConsent("demo-user-id", { consent_type: "ai_profile_context", granted: true }, true);
+
+    const consented = await sendChatMessage(
+      "demo-session-default",
+      "demo-user-id",
+      "I have mild fatigue today.",
+      true
+    );
+    expect(consented.personalized).toBe(true);
+    expect(consented.reply).toContain("Personalized with your health profile");
+  });
 });
 
 describe("chatService - generateHealthSummary", () => {

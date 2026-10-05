@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { ChatSession, ChatMessage, ChatRole, RiskLevel, ChatConsultResponse, HealthAssessmentSummary } from "@/types/chat";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "@/lib/emergencyDetector";
+import { hasConsent } from "./privacyService";
 
 const DEMO_SESSIONS_KEY = "healthai_demo_chat_sessions";
 const DEMO_MESSAGES_KEY = "healthai_demo_chat_messages";
@@ -374,6 +375,8 @@ export async function sendChatMessage(
 
   // 2. Demo Mode Simulation (No real external AI calls, safe structured guidance)
   if (isDemo || !isSupabaseConfigured) {
+    const isPersonalized = await hasConsent(userId, "ai_profile_context", isDemo).catch(() => false);
+
     await saveChatMessage(
       {
         session_id: sessionId,
@@ -384,8 +387,12 @@ export async function sendChatMessage(
       isDemo
     );
 
+    const replyPrefix = isPersonalized
+      ? "[Demo AI - Personalized with your health profile] "
+      : "[Demo AI] ";
+
     const mockResponse: ChatConsultResponse = {
-      reply: `[Demo AI] Thank you for describing your symptoms. In this demo mode, I can provide general lifestyle wellness guidance: remember to maintain steady hydration, prioritize restful sleep, and avoid strenuous strain. How long have you been experiencing this?`,
+      reply: `${replyPrefix}Thank you for describing your symptoms. In this demo mode, I can provide general lifestyle wellness guidance: remember to maintain steady hydration, prioritize restful sleep, and avoid strenuous strain. How long have you been experiencing this?`,
       risk_level: "Low",
       emergency: false,
       suggested_replies: ["Started today", "A few days", "Mild intensity", "Associated with stress"],
@@ -395,6 +402,7 @@ export async function sendChatMessage(
         intensity: "mild",
         lifestyle: "hydration and rest recommended",
       },
+      personalized: isPersonalized,
     };
 
     await saveChatMessage(
@@ -408,6 +416,7 @@ export async function sendChatMessage(
           risk_level: mockResponse.risk_level,
           suggested_replies: mockResponse.suggested_replies,
           extracted: mockResponse.extracted,
+          personalized: isPersonalized,
         },
       },
       isDemo
@@ -502,7 +511,9 @@ function generateFallbackConsultResponse(content: string): ChatConsultResponse {
     false
   );
 
+  const isPersonalized = await hasConsent(userId, "ai_profile_context", false).catch(() => false);
   const fallback = generateFallbackConsultResponse(trimmed);
+  fallback.personalized = isPersonalized;
 
   await saveChatMessage(
     {
@@ -515,6 +526,7 @@ function generateFallbackConsultResponse(content: string): ChatConsultResponse {
         risk_level: fallback.risk_level,
         suggested_replies: fallback.suggested_replies,
         extracted: fallback.extracted,
+        personalized: isPersonalized,
       },
     },
     false

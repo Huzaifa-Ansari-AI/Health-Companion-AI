@@ -17,6 +17,7 @@ export interface ValidatedConsultOutput {
     intensity?: string;
     lifestyle?: string;
   };
+  personalized?: boolean;
 }
 
 export const SAFE_FALLBACK_OUTPUT: ValidatedConsultOutput = {

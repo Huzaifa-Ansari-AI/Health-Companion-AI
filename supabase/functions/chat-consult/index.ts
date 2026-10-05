@@ -5,8 +5,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "../_shared/emergencyDetector.ts";
-import { SYSTEM_PROMPT_V1 } from "../_shared/prompts/consultPrompt.ts";
+import { buildConsultSystemPrompt } from "../_shared/prompts/consultPrompt.ts";
 import { invokeLLM, LLMMessage, ValidatedConsultOutput } from "../_shared/aiAdapter.ts";
+import { formatProfileContext } from "../_shared/profileContextBuilder.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -185,10 +186,55 @@ serve(async (req: Request) => {
       content: m.content,
     }));
 
-    // 8. Invoke AI via Provider Adapter
-    const aiOutput = await invokeLLM(SYSTEM_PROMPT_V1, contextMessages);
+    // 8. Consent-guarded Health Profile Personalization Context (Milestone 4)
+    let profileContextPrompt = "";
+    let isPersonalized = false;
 
-    // 9. Persist Assistant Response
+    try {
+      const { data: consentRecords } = await supabaseClient
+        .from("privacy_consents")
+        .select("consent_type, granted, created_at")
+        .eq("user_id", user.id)
+        .eq("consent_type", "ai_profile_context")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const hasConsent = Boolean(consentRecords && consentRecords.length > 0 && consentRecords[0].granted);
+
+      if (hasConsent) {
+        const [profileRes, allergiesRes, conditionsRes, medsRes, familyRes] = await Promise.all([
+          supabaseClient.from("health_profiles").select("age, gender, date_of_birth").eq("user_id", user.id).maybeSingle(),
+          supabaseClient.from("profile_allergies").select("name, severity").eq("user_id", user.id),
+          supabaseClient.from("profile_conditions").select("name, status").eq("user_id", user.id).neq("status", "past"),
+          supabaseClient.from("profile_medications").select("name").eq("user_id", user.id).eq("is_current", true),
+          supabaseClient.from("profile_family_history").select("condition_name, relation").eq("user_id", user.id),
+        ]);
+
+        profileContextPrompt = formatProfileContext({
+          age: profileRes?.data?.age,
+          gender: profileRes?.data?.gender,
+          date_of_birth: profileRes?.data?.date_of_birth,
+          allergies: allergiesRes?.data || [],
+          conditions: conditionsRes?.data || [],
+          medications: medsRes?.data || [],
+          familyHistory: familyRes?.data || [],
+        });
+
+        if (profileContextPrompt) {
+          isPersonalized = true;
+        }
+      }
+    } catch {
+      // Non-blocking: fail safely to generic consultation if profile loading errors
+    }
+
+    const systemPrompt = buildConsultSystemPrompt(profileContextPrompt);
+
+    // 9. Invoke AI via Provider Adapter
+    const aiOutput = await invokeLLM(systemPrompt, contextMessages);
+    aiOutput.personalized = isPersonalized;
+
+    // 10. Persist Assistant Response
     await supabaseClient.from("chat_messages").insert([
       {
         session_id: sessionId,
@@ -200,6 +246,7 @@ serve(async (req: Request) => {
           risk_level: aiOutput.risk_level,
           suggested_replies: aiOutput.suggested_replies,
           extracted: aiOutput.extracted,
+          personalized: isPersonalized,
         },
       },
     ]);
