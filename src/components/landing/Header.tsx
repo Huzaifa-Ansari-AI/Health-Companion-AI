@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Heart, LayoutDashboard, LogOut, MessageSquare } from "lucide-react";
+import { Heart, LayoutDashboard, LogOut, MessageSquare, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
@@ -45,6 +45,12 @@ const Header = () => {
                   <Button variant="outline" size="sm" className="gap-1.5 hidden sm:inline-flex rounded-xl">
                     <MessageSquare className="w-4 h-4 text-primary" />
                     <span>AI Chat</span>
+                  </Button>
+                </Link>
+                <Link to="/profile">
+                  <Button variant="outline" size="sm" className="gap-1.5 hidden md:inline-flex rounded-xl">
+                    <User className="w-4 h-4 text-primary" />
+                    <span>Profile</span>
                   </Button>
                 </Link>
                 <Link to="/dashboard">

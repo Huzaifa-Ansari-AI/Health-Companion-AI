@@ -19,6 +19,7 @@ import {
   MessageSquare,
   HelpCircle,
   FileText,
+  User,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TodayCheckinCard } from "@/components/dashboard/TodayCheckinCard";
@@ -111,6 +112,12 @@ const Dashboard: React.FC = () => {
               <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs rounded-xl">
                 <MessageSquare className="w-4 h-4 text-primary" />
                 <span className="hidden sm:inline">AI Consultation</span>
+              </Button>
+            </Link>
+            <Link to="/profile">
+              <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs rounded-xl">
+                <User className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">Profile</span>
               </Button>
             </Link>
             <Link to="/assessment">

@@ -15,6 +15,7 @@ import Chat from "./pages/Chat";
 import Report from "./pages/Report";
 import SharedReport from "./pages/SharedReport";
 import Checkin from "./pages/Checkin";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const Trends = lazy(() => import("./pages/Trends"));
@@ -71,6 +72,14 @@ const App = () => (
                   <Suspense fallback={<div className="min-h-screen bg-muted/30 flex items-center justify-center text-sm text-muted-foreground">Loading trends...</div>}>
                     <Trends />
                   </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />
