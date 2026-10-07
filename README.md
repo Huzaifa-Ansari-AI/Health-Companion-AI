@@ -89,10 +89,21 @@ npm run build
 ```
 The optimized production bundle will be output to the `dist/` directory.
 
+### 6. AI Engine Configuration (Google Gemini)
+The consultation chatbot and dynamic health risk assessment run server-side via Supabase Edge Functions (`chat-consult` and `analyze-health`).
+Configure the following secrets in your Supabase project dashboard (**Project Settings** -> **Edge Functions** -> **Secrets**):
+```env
+GEMINI_API_KEY=AIzaSy...              # Your Google AI Studio API Key (Required)
+GEMINI_MODEL=gemini-1.5-flash        # Model selection (Optional, defaults to gemini-1.5-flash)
+```
+*Note: In Demo Mode, an offline simulated health analysis engine runs locally without requiring an API key or network connection.*
+
 ---
 
 ## Documentation
 
+- [Roadmap & Milestone Status](docs/ROADMAP.md)
+- [M4.5 AI Hardening Implementation Plan](docs/M4.5_PLAN.md)
 - [Project Audit](docs/PROJECT_AUDIT.md)
 - [System Architecture](docs/ARCHITECTURE.md)
 - [Supabase Setup & Schema](docs/SUPABASE.md)
@@ -104,3 +115,4 @@ The optimized production bundle will be output to the `dist/` directory.
 
 ## License
 MIT
+
