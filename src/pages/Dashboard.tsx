@@ -123,7 +123,7 @@ const Dashboard: React.FC = () => {
             <Link to="/assessment">
               <Button size="sm" className="gap-1.5 shadow-2xs rounded-xl">
                 <PlusCircle className="w-4 h-4" />
-                <span>New Check</span>
+                <span>New Assessment</span>
               </Button>
             </Link>
             <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1 text-muted-foreground hover:text-foreground">
@@ -198,7 +198,7 @@ const Dashboard: React.FC = () => {
             </p>
             <Link to="/assessment">
               <Button size="lg" className="gap-2">
-                Start First Health Check
+                Start First Health Risk Assessment
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>

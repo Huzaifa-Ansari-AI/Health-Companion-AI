@@ -48,7 +48,7 @@ const Hero = () => {
                 </Link>
                 <Link to="/assessment">
                   <Button variant="hero-outline" size="lg" className="w-full sm:w-auto">
-                    Start Health Check
+                    Health Risk Assessment
                   </Button>
                 </Link>
                 <Link to="/dashboard">
@@ -62,7 +62,7 @@ const Hero = () => {
               <>
                 <Link to="/auth?mode=signup">
                   <Button variant="hero" size="lg" className="w-full sm:w-auto">
-                    Start Free Health Check
+                    Start Free Assessment
                     <ArrowRight className="w-5 h-5" />
                   </Button>
                 </Link>

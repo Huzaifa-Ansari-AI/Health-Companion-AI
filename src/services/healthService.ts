@@ -1,6 +1,27 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { HealthAssessmentSummary } from "@/types/chat";
 
+export interface AssessmentLifestyleData {
+  age?: number;
+  gender?: string;
+  height_feet?: number;
+  height_inches?: number;
+  weight_unit?: "kg" | "lbs";
+  input_weight?: number;
+  sleep_hours?: number;
+  activity_level?: string;
+  water_liters?: number;
+  diet_type?: string;
+  smoking?: boolean;
+  harmful_substances?: string[];
+  alcohol?: boolean;
+  family_history?: string[];
+  custom_symptoms?: string;
+  custom_habits?: string;
+  custom_family_history?: string;
+  [key: string]: unknown;
+}
+
 export interface AssessmentRecord {
   id?: string;
   user_id?: string;
@@ -9,11 +30,7 @@ export interface AssessmentRecord {
   bmi?: number;
   bmi_category?: string;
   symptoms: string[];
-  lifestyle_data?: {
-    sleep_hours?: number;
-    activity_level?: string;
-    water_liters?: number;
-  };
+  lifestyle_data?: AssessmentLifestyleData;
   risk_level: "Low" | "Medium" | "High";
   ai_summary: string;
   recommendations: string[];
@@ -22,6 +39,44 @@ export interface AssessmentRecord {
   session_id?: string;
   chat_summary_data?: Record<string, unknown>;
   created_at?: string;
+}
+
+/**
+ * Converts height in feet and inches to centimeters.
+ * Example: 5 ft 7 in -> 170.2 cm
+ */
+export function feetInchesToCm(feet: number, inches: number): number {
+  const safeFeet = Math.max(0, Math.floor(feet || 0));
+  const safeInches = Math.max(0, Math.min(11, inches || 0));
+  const totalInches = safeFeet * 12 + safeInches;
+  return Number((totalInches * 2.54).toFixed(1));
+}
+
+/**
+ * Converts centimeters to approximate feet and remaining inches.
+ */
+export function cmToFeetInches(cm: number): { feet: number; inches: number } {
+  if (!cm || cm <= 0) return { feet: 5, inches: 7 };
+  const totalInches = Math.round(cm / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return { feet, inches };
+}
+
+/**
+ * Converts pounds (lbs) to kilograms (kg).
+ */
+export function lbsToKg(lbs: number): number {
+  if (!lbs || lbs <= 0) return 0;
+  return Number((lbs / 2.20462).toFixed(1));
+}
+
+/**
+ * Converts kilograms (kg) to pounds (lbs).
+ */
+export function kgToLbs(kg: number): number {
+  if (!kg || kg <= 0) return 0;
+  return Number((kg * 2.20462).toFixed(1));
 }
 
 export function calculateBMI(heightCm: number, weightKg: number): { bmi: number; category: string } {
