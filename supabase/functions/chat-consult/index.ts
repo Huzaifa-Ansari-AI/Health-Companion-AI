@@ -121,20 +121,29 @@ serve(async (req: Request) => {
     const emergencyCheck = detectEmergency(sanitizedMessage);
 
     if (emergencyCheck.isEmergency) {
+      const isTerminalDistress = emergencyCheck.matchedCategory === "Critical/Terminal Distress & Severe Oncology";
+
       const emergencyReply: ValidatedConsultOutput = {
-        reply: EMERGENCY_DISCLAIMER_MESSAGE,
-        risk_level: "High",
+        reply: emergencyCheck.emergencyAdvice || EMERGENCY_DISCLAIMER_MESSAGE,
+        suggested_title: isTerminalDistress ? "Oncology & Palliative Care" : "Emergency Consultation",
+        risk_level: isTerminalDistress ? null : "High",
         emergency: true,
-        suggested_replies: [
-          "I am calling emergency services",
-          "I am heading to the nearest ER",
-          "What can I do while waiting?",
-        ],
+        suggested_replies: isTerminalDistress
+          ? [
+              "How can palliative care help?",
+              "Questions for the oncology team",
+              "Managing daily comfort & pain",
+            ]
+          : [
+              "I am calling emergency services",
+              "I am heading to the nearest ER",
+              "What can I do while waiting?",
+            ],
         extracted: {
-          symptoms: [emergencyCheck.triggerPhrase || "emergency symptom"],
-          duration: "Immediate",
+          symptoms: [emergencyCheck.triggerPhrase || (isTerminalDistress ? "Advanced oncology / serious illness" : "emergency symptom")],
+          duration: isTerminalDistress ? "Advanced / Ongoing" : "Immediate",
           intensity: "Severe",
-          lifestyle: "",
+          lifestyle: isTerminalDistress ? "Palliative and oncology team support" : "",
         },
       };
 
@@ -154,18 +163,25 @@ serve(async (req: Request) => {
           content: emergencyReply.reply,
           metadata: {
             emergency: true,
-            risk_level: "High",
+            risk_level: emergencyReply.risk_level,
             suggested_replies: emergencyReply.suggested_replies,
             matched_category: emergencyCheck.matchedCategory,
           },
         },
       ]);
 
-      // Elevate session risk level to High
-      await supabaseClient
-        .from("chat_sessions")
-        .update({ risk_level: "High", updated_at: new Date().toISOString() })
-        .eq("id", sessionId);
+      // Elevate session risk level to High for acute emergencies, or update title for terminal distress
+      if (!isTerminalDistress) {
+        await supabaseClient
+          .from("chat_sessions")
+          .update({ risk_level: "High", updated_at: new Date().toISOString() })
+          .eq("id", sessionId);
+      } else {
+        await supabaseClient
+          .from("chat_sessions")
+          .update({ title: "Oncology & Palliative Care", updated_at: new Date().toISOString() })
+          .eq("id", sessionId);
+      }
 
       return new Response(JSON.stringify(emergencyReply), {
         status: 200,
@@ -184,18 +200,44 @@ serve(async (req: Request) => {
       },
     ]);
 
-    // 7. Load last 10 messages for conversation context
+    // 7. Load rolling history for conversation context (up to 16 messages)
     const { data: previousMessages } = await supabaseClient
       .from("chat_messages")
       .select("role, content")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true })
-      .limit(10);
+      .limit(16);
 
-    const contextMessages: LLMMessage[] = (previousMessages || []).map((m: { role: string; content: string }) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+    const rawHistory = previousMessages || [];
+    let contextMessages: LLMMessage[] = [];
+
+    if (rawHistory.length <= 8) {
+      contextMessages = rawHistory.map((m: { role: string; content: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+    } else {
+      const older = rawHistory.slice(0, rawHistory.length - 6);
+      const recent = rawHistory.slice(rawHistory.length - 6);
+      const condensedSummary = older
+        .map((m: { role: string; content: string }) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content.slice(0, 120)}`)
+        .join(" | ");
+
+      contextMessages = [
+        {
+          role: "user",
+          content: `[Previous conversation summary: ${condensedSummary}]`,
+        },
+        {
+          role: "assistant",
+          content: "I understand the prior context of our consultation. Let's continue.",
+        },
+        ...recent.map((m: { role: string; content: string }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      ];
+    }
 
     // 8. Consent-guarded Health Profile Personalization Context (Milestone 4)
     let profileContextPrompt = "";
@@ -268,6 +310,30 @@ serve(async (req: Request) => {
         .from("chat_sessions")
         .update({ risk_level: aiOutput.risk_level, updated_at: new Date().toISOString() })
         .eq("id", sessionId);
+    }
+
+    // Auto-update session title if suggested and session has default title
+    if (aiOutput.suggested_title && aiOutput.suggested_title.trim().length > 0) {
+      const cleanTitle = aiOutput.suggested_title.trim().replace(/^["']|["']$/g, "").slice(0, 50);
+      if (cleanTitle && cleanTitle.toLowerCase() !== "health consultation") {
+        const { data: currentSession } = await supabaseClient
+          .from("chat_sessions")
+          .select("title")
+          .eq("id", sessionId)
+          .maybeSingle();
+
+        if (
+          !currentSession?.title ||
+          currentSession.title === "New Health Consultation" ||
+          currentSession.title === "New Consultation" ||
+          currentSession.title.trim() === ""
+        ) {
+          await supabaseClient
+            .from("chat_sessions")
+            .update({ title: cleanTitle, updated_at: new Date().toISOString() })
+            .eq("id", sessionId);
+        }
+      }
     }
 
     return new Response(JSON.stringify(aiOutput), {

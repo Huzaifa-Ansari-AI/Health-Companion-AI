@@ -44,6 +44,7 @@ export interface ChatMessage {
 
 export interface ChatConsultResponse {
   reply: string;
+  suggested_title?: string | null;
   risk_level: RiskLevel | null;
   emergency: boolean;
   suggested_replies: string[];

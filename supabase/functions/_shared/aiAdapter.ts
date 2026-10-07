@@ -10,6 +10,7 @@ export interface LLMMessage {
 
 export interface ValidatedConsultOutput {
   reply: string;
+  suggested_title?: string | null;
   risk_level: "Low" | "Medium" | "High" | null;
   emergency: boolean;
   suggested_replies: string[];
@@ -33,6 +34,11 @@ export interface AiDiagnosticResult {
 // Zod Schema for strict consultation output validation
 export const ConsultOutputSchema = z.object({
   reply: z.string().trim().min(1, "Reply cannot be empty"),
+  suggested_title: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => val ?? null),
   risk_level: z
     .enum(["Low", "Medium", "High"])
     .nullable()

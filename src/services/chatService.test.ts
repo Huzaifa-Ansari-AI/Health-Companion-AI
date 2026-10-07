@@ -281,6 +281,76 @@ describe("chatService - generateHealthSummary", () => {
     expect(summary.doctor_questions.length).toBeGreaterThan(0);
     expect(summary.disclaimer).toContain("This is not a medical diagnosis");
   });
+
+  it("strictly filters greetings, courtesies, and intros from being saved as symptoms", async () => {
+    const session = await createChatSession("demo-user-id", "Greeting Test Session", true);
+
+    // User only sent greetings and intros
+    await saveChatMessage(
+      {
+        session_id: session.id,
+        user_id: "demo-user-id",
+        role: "user",
+        content: "Assalamualaikum. My name is Huzaifa Ansari.",
+      },
+      true
+    );
+
+    await saveChatMessage(
+      {
+        session_id: session.id,
+        user_id: "demo-user-id",
+        role: "assistant",
+        content: "Walaikum Assalam! How can I help you today?",
+        metadata: {
+          extracted: {
+            // Accidental greeting extraction from flawed AI/input
+            symptoms: ["assalamualaikum", "my name is Huzaifa"],
+          },
+        },
+      },
+      true
+    );
+
+    const summary = await generateHealthSummary(session.id, "demo-user-id", true);
+    expect(summary.symptoms).not.toContain("assalamualaikum");
+    expect(summary.symptoms).not.toContain("my name is Huzaifa");
+    expect(summary.symptoms).toContain("General wellness inquiry");
+  });
+
+  it("handles last stage of cancer empathetically with null risk level (no Low Risk badge)", async () => {
+    const session = await createChatSession("demo-user-id", "New Health Consultation", true);
+
+    const response = await sendChatMessage(
+      session.id,
+      "demo-user-id",
+      "My relative has the last stage of cancer. What comfort care is recommended?",
+      true
+    );
+
+    expect(response.emergency).toBe(true);
+    expect(response.risk_level).toBeNull(); // Must NOT show Low Risk!
+    expect(response.reply).toContain("palliative");
+    expect(response.reply).toContain("oncology");
+
+    const updatedSession = await getChatSession(session.id, "demo-user-id", true);
+    expect(updatedSession?.title).toBe("Oncology & Palliative Care");
+  });
+
+  it("auto-updates default session title on first message in demo mode", async () => {
+    const session = await createChatSession("demo-user-id", "New Health Consultation", true);
+
+    await sendChatMessage(
+      session.id,
+      "demo-user-id",
+      "Severe knee joint stiffness and pain",
+      true
+    );
+
+    const updatedSession = await getChatSession(session.id, "demo-user-id", true);
+    expect(updatedSession?.title).not.toBe("New Health Consultation");
+    expect(updatedSession?.title).toContain("Consultation");
+  });
 });
 
 

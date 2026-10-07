@@ -308,6 +308,25 @@ export async function saveChatMessage(
  * Evaluates emergency detection FIRST. In Demo mode, returns safe mock guidance.
  * In production, invokes the Supabase Edge Function 'chat-consult'.
  */
+const GREETING_OR_COURTESY_PATTERNS = [
+  /^(?:assalam|as-salam|salaam|walaikum|wa-alaikum)\b/i,
+  /\b(?:assalam\s*o\s*alaikum|assalamualaikum)\b/i,
+  /^(?:hello|hi|hey|greetings|dear)\b/i,
+  /\b(?:good\s*(?:morning|afternoon|evening|day|night))\b/i,
+  /\b(?:my\s*name\s*is|i\s*am\s+[a-z]+)\b/i,
+  /\b(?:how\s*(?:are\s*you|r\s*u))\b/i,
+  /\b(?:shukriya|thanks|thank\s*you)\b/i,
+  /\b(?:nice\s*to\s*meet\s*you)\b/i,
+  /\b(?:kya\s*haal\s*hai|kaise\s*ho)\b/i,
+];
+
+export function isGreetingOrCourtesy(text: string): boolean {
+  if (!text || typeof text !== "string") return true;
+  const clean = text.trim();
+  if (clean.length < 2) return true;
+  return GREETING_OR_COURTESY_PATTERNS.some((pattern) => pattern.test(clean));
+}
+
 export async function sendChatMessage(
   sessionId: string,
   userId: string,
@@ -322,20 +341,29 @@ export async function sendChatMessage(
   // 1. Client-Side Emergency Check
   const emergencyCheck = detectEmergency(trimmed);
   if (emergencyCheck.isEmergency) {
+    const isTerminalDistress = emergencyCheck.matchedCategory === "Critical/Terminal Distress & Severe Oncology";
+
     const emergencyResponse: ChatConsultResponse = {
-      reply: EMERGENCY_DISCLAIMER_MESSAGE,
-      risk_level: "High",
+      reply: emergencyCheck.emergencyAdvice || EMERGENCY_DISCLAIMER_MESSAGE,
+      suggested_title: isTerminalDistress ? "Oncology & Palliative Care" : "Emergency Consultation",
+      risk_level: isTerminalDistress ? null : "High",
       emergency: true,
-      suggested_replies: [
-        "I am calling emergency services",
-        "I am heading to the nearest ER",
-        "What can I do while waiting?",
-      ],
+      suggested_replies: isTerminalDistress
+        ? [
+            "How can palliative care help?",
+            "Questions for the oncology team",
+            "Managing daily comfort & pain",
+          ]
+        : [
+            "I am calling emergency services",
+            "I am heading to the nearest ER",
+            "What can I do while waiting?",
+          ],
       extracted: {
-        symptoms: [emergencyCheck.triggerPhrase || "emergency symptom"],
-        duration: "Immediate",
+        symptoms: [emergencyCheck.triggerPhrase || (isTerminalDistress ? "Advanced oncology / serious illness" : "emergency symptom")],
+        duration: isTerminalDistress ? "Advanced / Ongoing" : "Immediate",
         intensity: "Severe",
-        lifestyle: "",
+        lifestyle: isTerminalDistress ? "Palliative and oncology team support" : "",
       },
     };
 
@@ -359,7 +387,7 @@ export async function sendChatMessage(
         content: emergencyResponse.reply,
         metadata: {
           emergency: true,
-          risk_level: "High",
+          risk_level: emergencyResponse.risk_level,
           suggested_replies: emergencyResponse.suggested_replies,
           extracted: emergencyResponse.extracted,
         },
@@ -367,8 +395,12 @@ export async function sendChatMessage(
       isDemo
     );
 
-    // Elevate session risk level to High
-    await updateChatSession(sessionId, { risk_level: "High" }, isDemo);
+    // Elevate session risk level to High for acute emergencies, or update title for terminal distress
+    if (!isTerminalDistress) {
+      await updateChatSession(sessionId, { risk_level: "High" }, isDemo);
+    } else {
+      await updateChatSession(sessionId, { title: "Oncology & Palliative Care" }, isDemo);
+    }
 
     return emergencyResponse;
   }
@@ -387,19 +419,32 @@ export async function sendChatMessage(
       isDemo
     );
 
+    const isGreeting = isGreetingOrCourtesy(trimmed);
+    const demoSymptoms = isGreeting ? [] : [trimmed.slice(0, 30)];
+    const suggestedTitle = isGreeting
+      ? "General Wellness Consultation"
+      : `${trimmed.slice(0, 24).replace(/[^\w\s]/g, "").trim()} Consultation`;
+
     const replyPrefix = isPersonalized
       ? "[Demo AI - Personalized with your health profile] "
       : "[Demo AI] ";
 
+    const replyText = isGreeting
+      ? `${replyPrefix}Hello! Welcome to Health Companion AI. How can I assist with your health and wellness goals today?`
+      : `${replyPrefix}Thank you for describing your symptoms. In this demo mode, I can provide general lifestyle wellness guidance: remember to maintain steady hydration, prioritize restful sleep, and avoid strenuous strain. How long have you been experiencing this?`;
+
     const mockResponse: ChatConsultResponse = {
-      reply: `${replyPrefix}Thank you for describing your symptoms. In this demo mode, I can provide general lifestyle wellness guidance: remember to maintain steady hydration, prioritize restful sleep, and avoid strenuous strain. How long have you been experiencing this?`,
-      risk_level: "Low",
+      reply: replyText,
+      suggested_title: suggestedTitle,
+      risk_level: isGreeting ? null : "Low",
       emergency: false,
-      suggested_replies: ["Started today", "A few days", "Mild intensity", "Associated with stress"],
+      suggested_replies: isGreeting
+        ? ["I have a fever", "Frequent headaches", "Poor sleep quality", "Digestive discomfort"]
+        : ["Started today", "A few days", "Mild intensity", "Associated with stress"],
       extracted: {
-        symptoms: [trimmed.slice(0, 30)],
-        duration: "recent",
-        intensity: "mild",
+        symptoms: demoSymptoms,
+        duration: isGreeting ? "" : "recent",
+        intensity: isGreeting ? "" : "mild",
         lifestyle: "hydration and rest recommended",
       },
       personalized: isPersonalized,
@@ -422,7 +467,15 @@ export async function sendChatMessage(
       isDemo
     );
 
-    await updateChatSession(sessionId, { risk_level: "Low" }, isDemo);
+    if (mockResponse.risk_level) {
+      await updateChatSession(sessionId, { risk_level: mockResponse.risk_level }, isDemo);
+    }
+
+    const existingSessions = getDemoSessions();
+    const cur = existingSessions.find((s) => s.id === sessionId);
+    if (cur && (cur.title === "New Health Consultation" || cur.title === "New Consultation")) {
+      await updateChatSession(sessionId, { title: suggestedTitle }, isDemo);
+    }
 
     return mockResponse;
   }
@@ -526,7 +579,9 @@ export async function generateHealthSummary(
   for (const msg of [...assistantMessages].reverse()) {
     if (msg.metadata?.extracted?.symptoms) {
       msg.metadata.extracted.symptoms.forEach((s) => {
-        if (s && s.trim()) symptomsSet.add(s.trim());
+        if (s && s.trim() && !isGreetingOrCourtesy(s)) {
+          symptomsSet.add(s.trim());
+        }
       });
     }
     if (msg.metadata?.extracted?.duration && !duration) {
@@ -540,12 +595,15 @@ export async function generateHealthSummary(
     }
   }
 
-  // Fallback if none extracted directly
+  // Fallback if none extracted directly: check for substantive user message, never a greeting
   if (symptomsSet.size === 0) {
-    if (userMessages.length > 0) {
-      symptomsSet.add(userMessages[0].content.slice(0, 40));
+    const substantiveUserMsg = userMessages.find(
+      (m) => m.content && m.content.trim().length > 3 && !isGreetingOrCourtesy(m.content)
+    );
+    if (substantiveUserMsg) {
+      symptomsSet.add(substantiveUserMsg.content.slice(0, 50));
     } else {
-      symptomsSet.add("General wellness concern");
+      symptomsSet.add("General wellness inquiry");
     }
   }
 

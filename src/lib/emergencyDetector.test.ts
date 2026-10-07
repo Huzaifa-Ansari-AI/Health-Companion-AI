@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "./emergencyDetector";
+import {
+  detectEmergency,
+  EMERGENCY_DISCLAIMER_MESSAGE,
+  PALLIATIVE_SUPPORT_MESSAGE,
+} from "./emergencyDetector";
 
 describe("emergencyDetector - Medical Safety Guardrails", () => {
   it("detects acute chest pain as an emergency", () => {
@@ -61,6 +65,23 @@ describe("emergencyDetector - Medical Safety Guardrails", () => {
     const result = detectEmergency("My throat is closing and my lips are swelling after eating peanuts.");
     expect(result.isEmergency).toBe(true);
     expect(result.matchedCategory).toBe("Severe Allergic Reaction (Anaphylaxis)");
+  });
+
+  it("detects last stage of cancer and provides compassionate palliative advice", () => {
+    const result = detectEmergency("My loved one was diagnosed with the last stage of cancer.");
+    expect(result.isEmergency).toBe(true);
+    expect(result.matchedCategory).toBe("Critical/Terminal Distress & Severe Oncology");
+    expect(result.emergencyAdvice).toBe(PALLIATIVE_SUPPORT_MESSAGE);
+  });
+
+  it("detects stage 4 oncology and terminal illness phrases", () => {
+    const result1 = detectEmergency("The doctor said it is stage 4 cancer.");
+    expect(result1.isEmergency).toBe(true);
+    expect(result1.matchedCategory).toBe("Critical/Terminal Distress & Severe Oncology");
+
+    const result2 = detectEmergency("We are currently considering hospice care options.");
+    expect(result2.isEmergency).toBe(true);
+    expect(result2.matchedCategory).toBe("Critical/Terminal Distress & Severe Oncology");
   });
 
   it("properly respects direct negation like 'no chest pain'", () => {

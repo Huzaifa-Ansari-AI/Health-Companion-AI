@@ -12,9 +12,13 @@ export interface EmergencyCheckResult {
 export const EMERGENCY_DISCLAIMER_MESSAGE =
   "EMERGENCY WARNING: Your reported symptoms indicate a potential medical emergency. Please immediately call 911 (or your local emergency services) or go to the nearest Emergency Department. Do not delay medical attention.";
 
+export const PALLIATIVE_SUPPORT_MESSAGE =
+  "I hear you, and I am deeply sorry for the profound challenges you or your loved one are facing. In advanced stages of serious illness, compassionate, specialized care is vital. Please connect closely with your oncology team, palliative care specialists, or hospice team who can provide personalized pain management, comfort care, and emotional guidance. You do not have to carry this alone. Please consult a qualified healthcare professional.";
+
 interface EmergencyCategory {
   name: string;
   patterns: RegExp[];
+  advice?: string;
 }
 
 const EMERGENCY_CATEGORIES: EmergencyCategory[] = [
@@ -87,6 +91,16 @@ const EMERGENCY_CATEGORIES: EmergencyCategory[] = [
       /\bcannot\s*swallow\s*(?:or\s*breathe)?\b/i,
     ],
   },
+  {
+    name: "Critical/Terminal Distress & Severe Oncology",
+    advice: PALLIATIVE_SUPPORT_MESSAGE,
+    patterns: [
+      /\b(?:last|final|terminal|advanced|late)\s*stage\s*(?:of\s*)?(?:cancer|carcinoma|tumor|oncology|illness|disease)\b/i,
+      /\bstage\s*(?:4|iv)\b.*?\b(?:cancer|carcinoma|tumor|oncology)\b/i,
+      /\b(?:terminal|end-stage)\s*(?:cancer|illness|condition|disease|diagnosis)\b/i,
+      /\b(?:palliative|hospice)\s*care\b/i,
+    ],
+  },
 ];
 
 // Negation prefix regex: matches phrases indicating negation within 1-3 words before a term
@@ -148,7 +162,7 @@ export function detectEmergency(text: string): EmergencyCheckResult {
             isEmergency: true,
             matchedCategory: category.name,
             triggerPhrase: match[0],
-            emergencyAdvice: EMERGENCY_DISCLAIMER_MESSAGE,
+            emergencyAdvice: category.advice || EMERGENCY_DISCLAIMER_MESSAGE,
           };
         }
       }

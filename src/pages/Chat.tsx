@@ -19,6 +19,7 @@ import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
 import { SessionList } from "@/components/chat/SessionList";
 import { HealthSummaryDialog } from "@/components/chat/HealthSummaryDialog";
 import { AiDiagnosticDialog } from "@/components/chat/AiDiagnosticDialog";
+import { AiMemoryDialog } from "@/components/chat/AiMemoryDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -29,6 +30,7 @@ import {
   Plus,
   User,
   Activity,
+  Brain,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,6 +50,7 @@ const Chat: React.FC = () => {
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [diagnosticModalOpen, setDiagnosticModalOpen] = useState(false);
+  const [memoryModalOpen, setMemoryModalOpen] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState<HealthAssessmentSummary | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
@@ -284,6 +287,18 @@ const Chat: React.FC = () => {
             <span className="hidden lg:inline">AI Diagnostics</span>
           </Button>
 
+          {/* AI Memory Transparency Shortcut */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMemoryModalOpen(true)}
+            className="h-8 px-2 gap-1.5 text-muted-foreground hover:text-foreground rounded-xl hidden sm:flex text-xs"
+            title="View what the AI knows about you"
+          >
+            <Brain className="w-3.5 h-3.5 text-primary" />
+            <span className="hidden md:inline">AI Memory</span>
+          </Button>
+
           {/* Health Profile Shortcut */}
           <Button
             variant="ghost"
@@ -407,6 +422,13 @@ const Chat: React.FC = () => {
       <AiDiagnosticDialog
         open={diagnosticModalOpen}
         onOpenChange={setDiagnosticModalOpen}
+        isDemo={isDemo}
+      />
+
+      {/* 6. AI Memory & Transparency Modal */}
+      <AiMemoryDialog
+        open={memoryModalOpen}
+        onOpenChange={setMemoryModalOpen}
         isDemo={isDemo}
       />
     </div>

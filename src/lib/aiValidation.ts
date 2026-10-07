@@ -5,6 +5,11 @@ import { z } from "zod";
 
 export const ConsultOutputSchema = z.object({
   reply: z.string().trim().min(1, "Reply cannot be empty"),
+  suggested_title: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => val ?? null),
   risk_level: z
     .enum(["Low", "Medium", "High"])
     .nullable()
@@ -32,6 +37,7 @@ export const ConsultOutputSchema = z.object({
 
 export type ValidatedConsultOutput = {
   reply: string;
+  suggested_title?: string | null;
   risk_level: "Low" | "Medium" | "High" | null;
   emergency: boolean;
   suggested_replies: string[];
@@ -46,7 +52,8 @@ export type ValidatedConsultOutput = {
 export const SAFE_FALLBACK_OUTPUT: ValidatedConsultOutput = {
   reply:
     "Thank you for sharing your symptoms. To help provide you with the most relevant wellness guidance, could you tell me how long you've noticed this and whether it feels mild or more intense?",
-  risk_level: "Low",
+  suggested_title: null,
+  risk_level: null,
   emergency: false,
   suggested_replies: ["Started today", "A few days", "Over a week", "Mild intensity"],
   extracted: {
@@ -83,6 +90,7 @@ export function validateAndNormalizeOutput(rawJson: unknown): ValidatedConsultOu
   const { data } = parsed;
   return {
     reply: data.reply.trim(),
+    suggested_title: data.suggested_title,
     risk_level: data.risk_level,
     emergency: data.emergency,
     suggested_replies: data.suggested_replies.slice(0, 4),

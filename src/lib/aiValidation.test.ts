@@ -57,8 +57,22 @@ describe("aiValidation - Strict LLM Output Schema Enforcement", () => {
   });
 
   it("provides safe fallback constants with disclaimers", () => {
-    expect(SAFE_FALLBACK_OUTPUT.risk_level).toBe("Low");
+    expect(SAFE_FALLBACK_OUTPUT.risk_level).toBeNull();
     expect(SAFE_FALLBACK_OUTPUT.emergency).toBe(false);
     expect(SAFE_FALLBACK_OUTPUT.reply).toContain("Thank you for sharing your symptoms");
+  });
+
+  it("validates and preserves suggested_title when provided", () => {
+    const rawWithTitle = {
+      reply: "Please stay hydrated and get plenty of rest.",
+      suggested_title: "Headache Consultation",
+      risk_level: "Low",
+      emergency: false,
+      suggested_replies: [],
+      extracted: { symptoms: ["headache"] },
+    };
+
+    const validated = validateAndNormalizeOutput(rawWithTitle);
+    expect(validated?.suggested_title).toBe("Headache Consultation");
   });
 });
