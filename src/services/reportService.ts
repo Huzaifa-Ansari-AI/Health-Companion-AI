@@ -7,6 +7,7 @@ import { ChatSession } from "@/types/chat";
 import {
   ReportData,
   ReportDataSchema,
+  ReportEditPayload,
   ProfileDemographics,
   MANDATORY_REPORT_DISCLAIMER,
   SymptomTimelineItem,
@@ -247,17 +248,45 @@ export function buildReportData(
     verificationCode: generateVerificationCode(assessmentId, timestamp),
   };
 
+  // Check for saved user edits
+  const edits = (assessment.chat_summary_data?.edited_report || assessment.lifestyle_data?.edited_report) as
+    | ReportEditPayload
+    | undefined;
+
   const rawReport: ReportData = {
     id: assessmentId,
     source: assessment.source === "chat" ? "chat" : "assessment",
     header,
     patient,
-    symptoms: symptomsSection,
-    lifestyle: lifestyleSection,
-    risk: riskSection,
-    recommendations: recommendationsSection,
-    doctorQuestions: doctorQuestionsSection,
+    symptoms: {
+      primaryConcern: edits?.primaryConcern || symptomsSection.primaryConcern,
+      timeline: edits?.timeline && edits.timeline.length > 0 ? edits.timeline : symptomsSection.timeline,
+    },
+    lifestyle: {
+      ...lifestyleSection,
+      sleepHours: edits?.sleepHours || lifestyleSection.sleepHours,
+      hydrationLiters: edits?.hydrationLiters || lifestyleSection.hydrationLiters,
+      activityLevel: edits?.activityLevel || lifestyleSection.activityLevel,
+    },
+    risk: {
+      ...riskSection,
+      reason: edits?.riskReason || riskSection.reason,
+    },
+    recommendations: {
+      items:
+        edits?.recommendations && edits.recommendations.length > 0
+          ? edits.recommendations
+          : recommendationsSection.items,
+    },
+    doctorQuestions: {
+      questions:
+        edits?.doctorQuestions && edits.doctorQuestions.length >= 2
+          ? edits.doctorQuestions
+          : doctorQuestionsSection.questions,
+    },
     footer,
+    isEdited: Boolean(edits),
+    lastEditedAt: edits?.lastEditedAt,
   };
 
   return ReportDataSchema.parse(rawReport);
@@ -353,3 +382,131 @@ export async function fetchReportData(
   const profile = await fetchProfileDemographics(userId, isDemo);
   return buildReportData(assessment, profile);
 }
+
+/**
+ * Saves user modifications to report sections, making it doctor-ready.
+ */
+export async function saveReportEdits(
+  assessmentId: string,
+  edits: ReportEditPayload,
+  userId: string,
+  isDemo = false
+): Promise<ReportData> {
+  const payloadWithTimestamp: ReportEditPayload = {
+    ...edits,
+    lastEditedAt: new Date().toISOString(),
+  };
+
+  if (isDemo || !isSupabaseConfigured) {
+    const raw = localStorage.getItem("healthai_demo_assessments");
+    if (raw) {
+      try {
+        const records: AssessmentRecord[] = JSON.parse(raw);
+        const idx = records.findIndex((a) => a.id === assessmentId);
+        if (idx !== -1) {
+          records[idx] = {
+            ...records[idx],
+            chat_summary_data: {
+              ...(records[idx].chat_summary_data || {}),
+              edited_report: payloadWithTimestamp,
+            },
+          };
+          localStorage.setItem("healthai_demo_assessments", JSON.stringify(records));
+        }
+      } catch (err) {
+        console.error("Error updating demo assessment edits:", err);
+      }
+    }
+    return fetchReportData(assessmentId, userId, true);
+  }
+
+  // Fetch current assessment from Supabase to preserve existing chat_summary_data
+  const { data: existing, error: fetchErr } = await supabase
+    .from("health_assessments")
+    .select("chat_summary_data")
+    .eq("id", assessmentId)
+    .eq("user_id", userId)
+    .single();
+
+  if (fetchErr) {
+    console.error("Error fetching assessment to save edits:", fetchErr);
+    throw fetchErr;
+  }
+
+  const currentSummary = (existing?.chat_summary_data as Record<string, unknown>) || {};
+  const updatedSummary = {
+    ...currentSummary,
+    edited_report: payloadWithTimestamp,
+  };
+
+  const { error: updateErr } = await supabase
+    .from("health_assessments")
+    .update({ chat_summary_data: updatedSummary })
+    .eq("id", assessmentId)
+    .eq("user_id", userId);
+
+  if (updateErr) {
+    console.error("Error saving report edits to Supabase:", updateErr);
+    throw updateErr;
+  }
+
+  return fetchReportData(assessmentId, userId, false);
+}
+
+/**
+ * Resets user modifications back to the original AI generated consultation or assessment.
+ */
+export async function resetReportEdits(
+  assessmentId: string,
+  userId: string,
+  isDemo = false
+): Promise<ReportData> {
+  if (isDemo || !isSupabaseConfigured) {
+    const raw = localStorage.getItem("healthai_demo_assessments");
+    if (raw) {
+      try {
+        const records: AssessmentRecord[] = JSON.parse(raw);
+        const idx = records.findIndex((a) => a.id === assessmentId);
+        if (idx !== -1 && records[idx].chat_summary_data) {
+          const updatedSummary = { ...records[idx].chat_summary_data };
+          delete (updatedSummary as Record<string, unknown>).edited_report;
+          records[idx] = {
+            ...records[idx],
+            chat_summary_data: updatedSummary,
+          };
+          localStorage.setItem("healthai_demo_assessments", JSON.stringify(records));
+        }
+      } catch (err) {
+        console.error("Error resetting demo assessment edits:", err);
+      }
+    }
+    return fetchReportData(assessmentId, userId, true);
+  }
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("health_assessments")
+    .select("chat_summary_data")
+    .eq("id", assessmentId)
+    .eq("user_id", userId)
+    .single();
+
+  if (fetchErr) {
+    throw fetchErr;
+  }
+
+  const currentSummary = { ...((existing?.chat_summary_data as Record<string, unknown>) || {}) };
+  delete currentSummary.edited_report;
+
+  const { error: updateErr } = await supabase
+    .from("health_assessments")
+    .update({ chat_summary_data: currentSummary })
+    .eq("id", assessmentId)
+    .eq("user_id", userId);
+
+  if (updateErr) {
+    throw updateErr;
+  }
+
+  return fetchReportData(assessmentId, userId, false);
+}
+

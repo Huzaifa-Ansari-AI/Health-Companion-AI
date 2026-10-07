@@ -95,8 +95,23 @@ export const ReportDataSchema = z.object({
   recommendations: RecommendationsSectionSchema,
   doctorQuestions: DoctorDiscussionSectionSchema,
   footer: ReportFooterSchema,
+  isEdited: z.boolean().optional(),
+  lastEditedAt: z.string().optional(),
 });
 export type ReportData = z.infer<typeof ReportDataSchema>;
+
+// Payload for user edits to report sections
+export interface ReportEditPayload {
+  primaryConcern?: string;
+  timeline?: SymptomTimelineItem[];
+  sleepHours?: string;
+  hydrationLiters?: string;
+  activityLevel?: string;
+  riskReason?: string;
+  recommendations?: string[];
+  doctorQuestions?: string[];
+  lastEditedAt?: string;
+}
 
 // Profile details form data interface
 export interface ProfileDemographics {
@@ -105,3 +120,4 @@ export interface ProfileDemographics {
   date_of_birth?: string | null;
   full_name?: string | null;
 }
+

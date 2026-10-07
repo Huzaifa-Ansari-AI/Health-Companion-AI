@@ -20,6 +20,8 @@ import {
   Download,
   Loader2,
   TrendingUp,
+  Edit3,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +30,8 @@ interface ReportViewProps {
   report: ReportData;
   verificationUrl?: string;
   onEditDetails?: () => void;
+  onEditReport?: () => void;
+  onResetReport?: () => void;
   onPrint?: () => void;
   actionSlot?: React.ReactNode;
 }
@@ -36,6 +40,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
   report,
   verificationUrl,
   onEditDetails,
+  onEditReport,
+  onResetReport,
   onPrint,
   actionSlot,
 }) => {
@@ -137,6 +143,29 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <span>Include 7-Day Vitals</span>
             </span>
           </label>
+          {onEditReport && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEditReport}
+              className="gap-1.5 rounded-xl border-primary/40 text-primary hover:bg-primary/5 shadow-2xs"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Report</span>
+            </Button>
+          )}
+          {report.isEdited && onResetReport && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onResetReport}
+              className="gap-1.5 rounded-xl text-muted-foreground hover:text-foreground"
+              title="Reset custom modifications to original AI assessment"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
+          )}
           {onEditDetails && (
             <Button variant="outline" size="sm" onClick={onEditDetails} className="gap-1.5 rounded-xl">
               <Edit2 className="w-3.5 h-3.5" />
@@ -185,6 +214,11 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <Badge variant="outline" className="text-2xs uppercase tracking-wider ml-1 text-primary border-primary/30">
                 Wellness Summary
               </Badge>
+              {report.isEdited && (
+                <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 text-2xs font-semibold">
+                  Edited by you
+                </Badge>
+              )}
             </div>
             <h1 className="text-2xl font-bold text-foreground mt-2">{header.reportTitle}</h1>
             <p className="text-xs text-muted-foreground">

@@ -5,10 +5,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { fetchReportData, fetchProfileDemographics } from "@/services/reportService";
-import { ReportData, ProfileDemographics } from "@/types/report";
+import { fetchReportData, fetchProfileDemographics, saveReportEdits, resetReportEdits } from "@/services/reportService";
+import { ReportData, ProfileDemographics, ReportEditPayload } from "@/types/report";
 import { ReportView } from "@/components/report/ReportView";
 import { CompleteDetailsDialog } from "@/components/report/CompleteDetailsDialog";
+import { EditReportDialog } from "@/components/report/EditReportDialog";
 import { ShareReportDialog } from "@/components/report/ShareReportDialog";
 import { SharedLinksManager } from "@/components/report/SharedLinksManager";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const Report: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [refreshSharesTrigger, setRefreshSharesTrigger] = useState(0);
 
@@ -75,6 +77,31 @@ const Report: React.FC = () => {
       fetchReportData(assessmentId, user.id, isDemo)
         .then((fresh) => setReport(fresh))
         .catch(() => {});
+    }
+  };
+
+  const handleSaveReportEdits = async (edits: ReportEditPayload) => {
+    if (!assessmentId || !user) return;
+    const updated = await saveReportEdits(assessmentId, edits, user.id, isDemo);
+    setReport(updated);
+  };
+
+  const handleResetReportEdits = async () => {
+    if (!assessmentId || !user) return;
+    try {
+      const original = await resetReportEdits(assessmentId, user.id, isDemo);
+      setReport(original);
+      toast({
+        title: "Report Restored",
+        description: "Reverted to the original AI consultation assessment.",
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to reset report.";
+      toast({
+        title: "Reset Failed",
+        description: msg,
+        variant: "destructive",
+      });
     }
   };
 
@@ -128,6 +155,8 @@ const Report: React.FC = () => {
             <ReportView
               report={report}
               onEditDetails={() => setIsDetailsDialogOpen(true)}
+              onEditReport={() => setIsEditDialogOpen(true)}
+              onResetReport={handleResetReportEdits}
               actionSlot={
                 <Button
                   variant="outline"
@@ -159,6 +188,15 @@ const Report: React.FC = () => {
                 initialData={profile}
                 isDemo={isDemo}
                 onSaved={handleDemographicsSaved}
+              />
+            )}
+
+            {report && (
+              <EditReportDialog
+                open={isEditDialogOpen}
+                onOpenChange={setIsEditDialogOpen}
+                report={report}
+                onSave={handleSaveReportEdits}
               />
             )}
 

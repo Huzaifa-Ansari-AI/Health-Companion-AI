@@ -195,7 +195,10 @@ export async function generateReportPdf(
   });
 
   y -= 12;
-  currentPage.drawText("Non-diagnostic health & lifestyle wellness summary.", {
+  const subtitle = report.isEdited
+    ? "Non-diagnostic wellness summary • Edited & Customized by Patient."
+    : "Non-diagnostic health & lifestyle wellness summary.";
+  currentPage.drawText(subtitle, {
     x: PDF_MARGIN,
     y,
     size: 8.5,
