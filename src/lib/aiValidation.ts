@@ -103,3 +103,47 @@ export function validateAndNormalizeOutput(rawJson: unknown): ValidatedConsultOu
   };
 }
 
+export interface DynamicRiskIndicator {
+  condition: string;
+  risk_level: "Low" | "Medium" | "High";
+  rationale: string;
+  icon_name?: string;
+}
+
+export interface HealthAnalysisResult {
+  overall_risk_level: "Low" | "Medium" | "High";
+  summary: string;
+  risks: DynamicRiskIndicator[];
+  recommendations: string[];
+  disclaimer: string;
+}
+
+export const HealthAnalysisSchema = z.object({
+  overall_risk_level: z.enum(["Low", "Medium", "High"]).default("Low"),
+  summary: z.string().trim().min(1, "Summary cannot be empty"),
+  risks: z
+    .array(
+      z.object({
+        condition: z.string().trim().min(1),
+        risk_level: z.enum(["Low", "Medium", "High"]),
+        rationale: z.string().trim().min(1),
+        icon_name: z.string().optional().default("Activity"),
+      })
+    )
+    .default([]),
+  recommendations: z.array(z.string()).default([]),
+  disclaimer: z
+    .string()
+    .default(
+      "This is not a medical diagnosis. Please consult a qualified healthcare professional."
+    ),
+});
+
+export function validateHealthAnalysisOutput(rawJson: unknown): HealthAnalysisResult | null {
+  if (!rawJson || typeof rawJson !== "object") return null;
+  const parsed = HealthAnalysisSchema.safeParse(rawJson);
+  if (!parsed.success) return null;
+  return parsed.data;
+}
+
+

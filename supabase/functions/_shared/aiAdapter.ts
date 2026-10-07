@@ -2,11 +2,48 @@
 // Supports Google Gemini and OpenAI with strict JSON output validation, timeouts, diagnostics, and explicit error handling.
 
 import { z } from "https://esm.sh/zod@3.22.4";
+import { HEALTH_ANALYSIS_SYSTEM_PROMPT } from "./prompts/analysisPrompt.ts";
 
 export interface LLMMessage {
   role: "user" | "assistant";
   content: string;
 }
+
+export interface DynamicRiskIndicator {
+  condition: string;
+  risk_level: "Low" | "Medium" | "High";
+  rationale: string;
+  icon_name?: string;
+}
+
+export interface HealthAnalysisResult {
+  overall_risk_level: "Low" | "Medium" | "High";
+  summary: string;
+  risks: DynamicRiskIndicator[];
+  recommendations: string[];
+  disclaimer: string;
+}
+
+export const HealthAnalysisSchema = z.object({
+  overall_risk_level: z.enum(["Low", "Medium", "High"]).default("Low"),
+  summary: z.string().trim().min(1, "Summary cannot be empty"),
+  risks: z
+    .array(
+      z.object({
+        condition: z.string().trim().min(1),
+        risk_level: z.enum(["Low", "Medium", "High"]),
+        rationale: z.string().trim().min(1),
+        icon_name: z.string().optional().default("Activity"),
+      })
+    )
+    .default([]),
+  recommendations: z.array(z.string()).default([]),
+  disclaimer: z
+    .string()
+    .default(
+      "This is not a medical diagnosis. Please consult a qualified healthcare professional."
+    ),
+});
 
 export interface ValidatedConsultOutput {
   reply: string;
@@ -373,4 +410,57 @@ export async function invokeLLM(
   // Explicit failure: NO silent fallback to generic text!
   throw new Error(`AI generation error: ${lastError?.message || "Unknown model failure"}`);
 }
+
+/**
+ * Invokes LLM specifically for dynamic multi-system health risk assessment (Step 3).
+ * Validates with HealthAnalysisSchema and retries once on parse error.
+ */
+export async function invokeHealthAnalysis(
+  userPayloadJson: string,
+  providerOverride?: string,
+  keyOverride?: string
+): Promise<HealthAnalysisResult> {
+  const provider = (providerOverride || Deno.env.get("AI_PROVIDER") || "gemini").toLowerCase();
+  const apiKey =
+    keyOverride || (provider === "openai" ? getOpenAiApiKey() : getGeminiApiKey());
+
+  if (!apiKey) {
+    const secretName = provider === "openai" ? "OPENAI_API_KEY" : "GEMINI_API_KEY";
+    throw new Error(
+      `AI service error: ${secretName} is not configured in Supabase Edge Function secrets.`
+    );
+  }
+
+  const messages: LLMMessage[] = [
+    {
+      role: "user",
+      content: `Analyze the following self-reported health risk assessment inputs and provide tailored dynamic risk evaluations:\n${userPayloadJson}`,
+    },
+  ];
+
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      let rawText = "";
+      if (provider === "openai") {
+        rawText = await callOpenAI(apiKey, HEALTH_ANALYSIS_SYSTEM_PROMPT, messages);
+      } else {
+        rawText = await callGemini(apiKey, HEALTH_ANALYSIS_SYSTEM_PROMPT, messages);
+      }
+
+      const parsed = JSON.parse(rawText);
+      const validated = HealthAnalysisSchema.safeParse(parsed);
+      if (validated.success) {
+        return validated.data;
+      }
+      throw new Error(`Schema validation error: ${JSON.stringify(validated.error.issues)}`);
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt === 0) continue;
+    }
+  }
+
+  throw new Error(`AI health analysis error: ${lastError?.message || "Unknown failure"}`);
+}
+
 

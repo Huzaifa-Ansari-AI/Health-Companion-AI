@@ -230,3 +230,190 @@ export async function saveChatAssessment(
   return saveAssessment(record, isDemo);
 }
 
+export type { DynamicRiskIndicator, HealthAnalysisResult };
+
+export function generateDemoHealthAnalysis(record: AssessmentRecord): HealthAnalysisResult {
+  const risks: DynamicRiskIndicator[] = [];
+  const symptoms = record.symptoms || [];
+  const bmiCategory = record.bmi_category || "Normal weight";
+  const lifestyle = record.lifestyle_data || {};
+  const bmi = record.bmi || 22;
+
+  // 1. BMI & Metabolic Analysis
+  if (bmiCategory === "Obesity") {
+    risks.push({
+      condition: "Metabolic Health & Weight Management",
+      risk_level: "High",
+      rationale: `BMI of ${bmi} falls in the obesity category, placing increased long-term strain on glycemic regulation and cardiovascular circulation.`,
+      icon_name: "Scale",
+    });
+  } else if (bmiCategory === "Overweight") {
+    risks.push({
+      condition: "Weight & Metabolic Profile",
+      risk_level: "Medium",
+      rationale: `BMI of ${bmi} indicates moderate excess weight, which can contribute to joint and cardiovascular strain over time.`,
+      icon_name: "Scale",
+    });
+  }
+
+  // 2. Tobacco / Harmful Substances Analysis
+  const hasSubstances = lifestyle.smoking || (lifestyle.harmful_substances && lifestyle.harmful_substances.length > 0);
+  if (hasSubstances) {
+    const list = [
+      lifestyle.smoking ? "cigarettes" : null,
+      ...(lifestyle.harmful_substances || []),
+    ].filter(Boolean).join(", ");
+    risks.push({
+      condition: "Cardiopulmonary & Mucosal Health",
+      risk_level: "High",
+      rationale: `Active exposure to ${list || "tobacco products"} contributes to substantial mucosal irritation, cellular stress, and arterial stiffness.`,
+      icon_name: "Flame",
+    });
+  }
+
+  // 3. Hereditary / Family History
+  if (lifestyle.family_history && lifestyle.family_history.length > 0) {
+    if (lifestyle.family_history.some((h) => h.toLowerCase().includes("diabet"))) {
+      risks.push({
+        condition: "Type 2 Diabetes Predisposition",
+        risk_level: "Medium",
+        rationale: "Reported family history of diabetes confers genetic susceptibility to insulin resistance, indicating benefit from routine fasting glucose tests.",
+        icon_name: "Activity",
+      });
+    }
+    if (lifestyle.family_history.some((h) => h.toLowerCase().includes("heart") || h.toLowerCase().includes("hyper") || h.toLowerCase().includes("cardio"))) {
+      risks.push({
+        condition: "Cardiovascular Hereditary Risk",
+        risk_level: "Medium",
+        rationale: "Familial cardiovascular trends warrant proactive blood pressure management and periodic lipid screenings.",
+        icon_name: "Heart",
+      });
+    }
+    if (lifestyle.family_history.some((h) => h.toLowerCase().includes("cancer"))) {
+      risks.push({
+        condition: "Preventative Oncology Vigilance",
+        risk_level: "Medium",
+        rationale: "Reported family history of oncology conditions underscores the importance of maintaining age-appropriate preventative screenings.",
+        icon_name: "ShieldAlert",
+      });
+    }
+  }
+
+  // 4. Symptoms Correlation
+  const hasChestPain = symptoms.some((s) => s.toLowerCase().includes("chest pain"));
+  const hasBreathShortness = symptoms.some((s) => s.toLowerCase().includes("shortness of breath"));
+  if (hasChestPain || hasBreathShortness) {
+    risks.push({
+      condition: "Cardiopulmonary Symptoms",
+      risk_level: "High",
+      rationale: "Reported chest discomfort or shortness of breath represents an acute signal requiring prompt clinical evaluation.",
+      icon_name: "Heart",
+    });
+  }
+
+  const hasHeadaches = symptoms.some((s) => s.toLowerCase().includes("headache") || s.toLowerCase().includes("dizziness"));
+  if (hasHeadaches) {
+    risks.push({
+      condition: "Neurological & Tension Comfort",
+      risk_level: "Medium",
+      rationale: "Frequent headaches or lightheadedness may reflect sleep disruption, hydration deficits, or sustained muscular tension.",
+      icon_name: "Activity",
+    });
+  }
+
+  // 5. Sleep & Recovery
+  if ((lifestyle.sleep_hours || 7) < 6) {
+    risks.push({
+      condition: "Sleep Deprivation & Systemic Recovery",
+      risk_level: "Medium",
+      rationale: `Reported sleep of ${lifestyle.sleep_hours} hours is below the recommended 7-9 hours, which can heighten daytime fatigue and cortisol.`,
+      icon_name: "Moon",
+    });
+  }
+
+  // Filter: Only keep Medium and High risks if any exist; otherwise show positive general wellness card
+  const prioritizedRisks = risks.filter((r) => r.risk_level === "High" || r.risk_level === "Medium");
+
+  const finalRisks =
+    prioritizedRisks.length > 0
+      ? prioritizedRisks
+      : [
+          {
+            condition: "General Wellness Profile",
+            risk_level: "Low" as const,
+            rationale: "Your biometric measurements and lifestyle habits reflect a balanced, low-risk baseline without acute red flags.",
+            icon_name: "Activity",
+          },
+        ];
+
+  // Overall Risk Level
+  const hasHigh = finalRisks.some((r) => r.risk_level === "High");
+  const hasMedium = finalRisks.some((r) => r.risk_level === "Medium");
+  const overall_risk_level: "Low" | "Medium" | "High" = hasHigh ? "High" : hasMedium ? "Medium" : "Low";
+
+  // Recommendations
+  const recommendations: string[] = [];
+  if (hasHigh || hasChestPain) {
+    recommendations.push("Schedule a comprehensive medical evaluation with a physician to review reported symptoms.");
+  }
+  if (bmiCategory === "Obesity" || bmiCategory === "Overweight") {
+    recommendations.push("Work with a dietitian on a calorie-conscious, whole-food nutritional plan rich in dietary fiber.");
+  }
+  if (hasSubstances) {
+    recommendations.push("Explore supportive cessation resources to reduce tobacco and chemical oral substance exposure.");
+  }
+  if ((lifestyle.sleep_hours || 7) < 7) {
+    recommendations.push("Establish a restorative bedtime routine to reach at least 7.5 hours of continuous nightly sleep.");
+  }
+  if ((lifestyle.water_liters || 2) < 2) {
+    recommendations.push("Aim for at least 2.0 liters of daily hydration throughout the day.");
+  }
+  if (recommendations.length < 3) {
+    recommendations.push("Maintain 150 minutes of weekly moderate aerobic physical activity such as brisk walking.");
+  }
+
+  const summary = `Based on your recorded measurements and lifestyle inputs, your BMI is ${bmi} (${bmiCategory}). With ${symptoms.length} reported symptom(s) and your daily habits, your overall wellness risk indicator is categorized as ${overall_risk_level}.`;
+
+  return {
+    overall_risk_level,
+    summary,
+    risks: finalRisks,
+    recommendations,
+    disclaimer: "This is not a medical diagnosis. Please consult a qualified healthcare professional.",
+  };
+}
+
+/**
+ * Invokes LLM-driven dynamic health risk assessment (Step 3).
+ * Connects to Edge Function 'analyze-health' with resilient fallback on network failure.
+ */
+export async function analyzeHealthAssessment(
+  record: AssessmentRecord,
+  isDemo = false
+): Promise<HealthAnalysisResult> {
+  if (isDemo || !isSupabaseConfigured) {
+    return generateDemoHealthAnalysis(record);
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke("analyze-health", {
+      body: record,
+    });
+
+    if (error) {
+      throw new Error(`Assessment analysis failed: ${error.message}`);
+    }
+
+    const validated = validateHealthAnalysisOutput(data);
+    if (!validated) {
+      return generateDemoHealthAnalysis(record);
+    }
+
+    return validated;
+  } catch {
+    // Resilient fallback to deterministic generator if network or Edge Function fails
+    return generateDemoHealthAnalysis(record);
+  }
+}
+
+

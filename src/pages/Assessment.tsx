@@ -7,6 +7,10 @@ import {
   feetInchesToCm,
   lbsToKg,
   kgToLbs,
+  analyzeHealthAssessment,
+  generateDemoHealthAnalysis,
+  type HealthAnalysisResult,
+  type AssessmentRecord,
 } from "@/services/healthService";
 import { getHealthProfile } from "@/services/profileService";
 import { Button } from "@/components/ui/button";
@@ -27,6 +31,8 @@ import {
   Flame,
   AlertTriangle,
   Info,
+  Moon,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "@/lib/emergencyDetector";
@@ -120,6 +126,8 @@ const Assessment: React.FC = () => {
   const [waterLiters, setWaterLiters] = useState<number>(2.0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<HealthAnalysisResult | null>(null);
 
   // Load profile defaults if available
   useEffect(() => {
@@ -275,11 +283,84 @@ const Assessment: React.FC = () => {
     return { riskLevel, summary, recommendations };
   };
 
+  const handleProceedToStep3 = async () => {
+    setStep(3);
+    setIsAnalyzing(true);
+
+    const compiledSymptoms = [...selectedSymptoms];
+    if (customSymptoms.trim()) {
+      compiledSymptoms.push(customSymptoms.trim());
+    }
+
+    const draftRecord: AssessmentRecord = {
+      user_id: user?.id,
+      height_cm: heightCm,
+      weight_kg: weightKg,
+      bmi,
+      bmi_category: bmiCategory,
+      symptoms: compiledSymptoms.length > 0 ? compiledSymptoms : ["None reported"],
+      lifestyle_data: {
+        age,
+        gender,
+        height_feet: heightFeet,
+        height_inches: heightInches,
+        weight_unit: weightUnit,
+        input_weight: inputWeight,
+        activity_level: activityLevel,
+        diet_type: dietType,
+        smoking,
+        harmful_substances: selectedSubstances,
+        custom_habits: customHabits.trim() || undefined,
+        alcohol,
+        family_history: selectedFamilyConditions,
+        custom_family_history: customFamilyHistory.trim() || undefined,
+        custom_symptoms: customSymptoms.trim() || undefined,
+        sleep_hours: sleepHours,
+        water_liters: waterLiters,
+      },
+      risk_level: "Low",
+      ai_summary: "",
+      recommendations: [],
+      disclaimer: "This is not a medical diagnosis. It is general wellness guidance.",
+    };
+
+    try {
+      const result = await analyzeHealthAssessment(draftRecord, localDemo);
+      setAnalysisResult(result);
+    } catch {
+      setAnalysisResult(generateDemoHealthAnalysis(draftRecord));
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const renderRiskIcon = (iconName?: string) => {
+    switch (iconName?.toLowerCase()) {
+      case "scale":
+        return <Scale className="w-4 h-4 text-primary" />;
+      case "flame":
+        return <Flame className="w-4 h-4 text-rose-500" />;
+      case "heart":
+        return <Heart className="w-4 h-4 text-rose-500" />;
+      case "shieldalert":
+        return <ShieldAlert className="w-4 h-4 text-amber-500" />;
+      case "moon":
+        return <Moon className="w-4 h-4 text-indigo-500" />;
+      case "alerttriangle":
+        return <AlertTriangle className="w-4 h-4 text-amber-500" />;
+      default:
+        return <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />;
+    }
+  };
+
   const handleFinish = async () => {
     if (!user) return;
     setIsSubmitting(true);
 
-    const analysis = calculateAnalysis();
+    const fallbackAnalysis = calculateAnalysis();
+    const finalRiskLevel = analysisResult?.overall_risk_level || fallbackAnalysis.riskLevel;
+    const finalSummary = analysisResult?.summary || fallbackAnalysis.summary;
+    const finalRecommendations = analysisResult?.recommendations || fallbackAnalysis.recommendations;
 
     // Compile complete symptoms array
     const compiledSymptoms = [...selectedSymptoms];
@@ -314,18 +395,19 @@ const Assessment: React.FC = () => {
             custom_symptoms: customSymptoms.trim() || undefined,
             sleep_hours: sleepHours,
             water_liters: waterLiters,
+            dynamic_risks: analysisResult?.risks,
           },
-          risk_level: analysis.riskLevel,
-          ai_summary: analysis.summary,
-          recommendations: analysis.recommendations,
-          disclaimer: "This is not a medical diagnosis. It is general wellness guidance.",
+          risk_level: finalRiskLevel,
+          ai_summary: finalSummary,
+          recommendations: finalRecommendations,
+          disclaimer: analysisResult?.disclaimer || "This is not a medical diagnosis. It is general wellness guidance.",
         },
         localDemo
       );
 
       toast({
         title: "Health Risk Assessment Saved",
-        description: "Your comprehensive assessment has been successfully logged.",
+        description: "Your personalized dynamic risk assessment has been successfully logged.",
       });
 
       navigate("/dashboard");
@@ -881,124 +963,246 @@ const Assessment: React.FC = () => {
                   <ArrowLeft className="w-4 h-4" />
                   <span>Body Basics</span>
                 </Button>
-                <Button onClick={() => setStep(3)} className="gap-2 rounded-xl text-xs sm:text-sm">
-                  <span>Review Assessment</span>
-                  <ArrowRight className="w-4 h-4" />
+                <Button
+                  onClick={handleProceedToStep3}
+                  disabled={isAnalyzing}
+                  className="gap-2 rounded-xl text-xs sm:text-sm"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Review Assessment</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* STEP 3: VERIFICATION & SAVE */}
+        {/* STEP 3: DYNAMIC RISK ASSESSMENT & SAVE */}
         {step === 3 && (
           <Card className="border-border/70 shadow-2xs rounded-2xl bg-card">
             <CardHeader className="space-y-1 pb-4">
               <div className="flex items-center gap-1.5 text-primary font-semibold text-xs uppercase tracking-wider">
                 <Sparkles className="w-4 h-4" />
-                <span>Assessment Summary</span>
+                <span>AI Risk Assessment</span>
               </div>
               <CardTitle className="text-lg sm:text-xl font-bold">Step 3: Verification & Save</CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Review your health metrics and lifestyle profile before saving to your dashboard history.
+                Review your dynamic health risks and personalized guidance before saving to your profile history.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-5">
-              {(() => {
-                const analysis = calculateAnalysis();
-                return (
-                  <div className="space-y-4">
-                    {/* Acute red flag notice if chest pain or severe respiratory was selected */}
-                    {hasChestPainOrSevereBreathing && (
-                      <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-800 dark:text-rose-300">
-                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-semibold">Important Medical Alert</p>
-                          <p className="text-2xs text-rose-700 dark:text-rose-400 mt-0.5">
-                            You reported symptoms that may require urgent medical evaluation. If you experience severe chest tightness, sudden shortness of breath, or pain radiating to your arm or jaw, please contact emergency services (911) immediately.
-                          </p>
+              {isAnalyzing ? (
+                <div className="py-16 flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center animate-pulse">
+                    <Loader2 className="w-7 h-7 animate-spin text-primary" />
+                  </div>
+                  <div className="space-y-1.5 max-w-sm">
+                    <h3 className="font-bold text-base text-foreground">Analyzing Your Health Metrics...</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Evaluating metabolic biometrics, reported symptoms, regional substances, and lifestyle factors with our AI health engine.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                (() => {
+                  const fallbackAnalysis = calculateAnalysis();
+                  const currentAnalysis = analysisResult || {
+                    overall_risk_level: fallbackAnalysis.riskLevel,
+                    summary: fallbackAnalysis.summary,
+                    risks: [
+                      {
+                        condition: "General Wellness Profile",
+                        risk_level: "Low" as const,
+                        rationale: "Your biometric measurements and lifestyle habits reflect a balanced baseline.",
+                        icon_name: "Activity",
+                      },
+                    ],
+                    recommendations: fallbackAnalysis.recommendations,
+                    disclaimer: "This is not a medical diagnosis. Please consult a qualified healthcare professional.",
+                  };
+
+                  const emergencyCheck = detectEmergency(
+                    `${selectedSymptoms.join(" ")} ${customSymptoms} ${customHabits}`
+                  );
+                  const isAcuteAlert = emergencyCheck.isEmergency || hasChestPainOrSevereBreathing;
+
+                  return (
+                    <div className="space-y-5">
+                      {/* Acute Emergency Banner */}
+                      {isAcuteAlert && (
+                        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-xs text-rose-800 dark:text-rose-300">
+                          <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="font-bold text-sm">Immediate Medical Attention Recommended</p>
+                            <p className="text-xs leading-relaxed text-rose-700 dark:text-rose-400">
+                              {emergencyCheck.emergencyAdvice || EMERGENCY_DISCLAIMER_MESSAGE}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 1. BMI Hero Card */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border shadow-2xs space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Scale className="w-4 h-4 text-primary" />
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Body Mass Index (BMI)
+                              </h4>
+                              <p className="text-2xs text-muted-foreground">
+                                {heightFeet}&apos;{heightInches}&quot; ({heightCm} cm) • {inputWeight} {weightUnit} ({weightUnit === "lbs" ? `≈ ${weightKg} kg` : `≈ ${kgToLbs(weightKg)} lbs`})
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className={`text-xs font-semibold ${getBmiBadgeColor(bmiCategory)}`}>
+                            {bmiCategory}
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">{bmi}</span>
+                          <span className="text-xs text-muted-foreground">kg/m²</span>
+                        </div>
+
+                        {/* Visual Spectrum Bar */}
+                        <div className="space-y-1.5">
+                          <div className="grid grid-cols-4 gap-1 h-2 rounded-full overflow-hidden bg-muted/60">
+                            <div className={`h-full ${bmi < 18.5 ? "bg-amber-500" : "bg-muted-foreground/20"}`} title="Underweight (< 18.5)" />
+                            <div className={`h-full ${bmi >= 18.5 && bmi < 25 ? "bg-emerald-500" : "bg-muted-foreground/20"}`} title="Normal (18.5 - 24.9)" />
+                            <div className={`h-full ${bmi >= 25 && bmi < 30 ? "bg-amber-500" : "bg-muted-foreground/20"}`} title="Overweight (25 - 29.9)" />
+                            <div className={`h-full ${bmi >= 30 ? "bg-rose-500" : "bg-muted-foreground/20"}`} title="Obesity (>= 30)" />
+                          </div>
+                          <div className="flex justify-between text-3xs text-muted-foreground font-medium px-0.5">
+                            <span>&lt; 18.5</span>
+                            <span>18.5 – 24.9</span>
+                            <span>25.0 – 29.9</span>
+                            <span>&ge; 30.0</span>
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    {/* Risk Badge and Summary Box */}
-                    <div className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm font-semibold text-foreground">
-                          Categorical Risk Indicator:
+                      {/* 2. Personalized Assessment Narrative */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-teal-500/5 dark:bg-teal-950/20 border border-teal-500/20 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-teal-800 dark:text-teal-300">
+                              Personalized Health Assessment
+                            </h4>
+                          </div>
+                          <Badge
+                            className={`text-xs font-semibold ${
+                              currentAnalysis.overall_risk_level === "Low"
+                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                                : currentAnalysis.overall_risk_level === "Medium"
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                                : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                            }`}
+                          >
+                            {currentAnalysis.overall_risk_level} Risk
+                          </Badge>
+                        </div>
+                        <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
+                          {currentAnalysis.summary}
+                        </p>
+                      </div>
+
+                      {/* 3. Dynamic Health Risk Indicators (Image 5 style) */}
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="text-sm font-bold text-foreground">Identified Health Risk Indicators</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Conditions evaluated based on your biometrics, reported symptoms, and lifestyle markers
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {currentAnalysis.risks.map((riskItem, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-3.5 rounded-xl border transition-all ${
+                                riskItem.risk_level === "High"
+                                  ? "bg-rose-500/5 border-rose-500/30"
+                                  : riskItem.risk_level === "Medium"
+                                  ? "bg-amber-500/5 border-amber-500/30"
+                                  : "bg-emerald-500/5 border-emerald-500/30"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded-lg bg-card border border-border">
+                                    {renderRiskIcon(riskItem.icon_name)}
+                                  </div>
+                                  <span className="text-xs font-semibold text-foreground leading-snug">
+                                    {riskItem.condition}
+                                  </span>
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-3xs font-semibold shrink-0 ${
+                                    riskItem.risk_level === "High"
+                                      ? "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/40"
+                                      : riskItem.risk_level === "Medium"
+                                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/40"
+                                      : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40"
+                                  }`}
+                                >
+                                  {riskItem.risk_level} Risk
+                                </Badge>
+                              </div>
+                              <p className="text-2xs text-muted-foreground leading-relaxed">
+                                {riskItem.rationale}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 4. Actionable Recommendations */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border shadow-2xs space-y-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Actionable Wellness Steps
+                        </h4>
+                        <div className="space-y-2.5">
+                          {currentAnalysis.recommendations.map((rec, i) => (
+                            <div key={i} className="flex items-start gap-2.5 text-xs text-foreground/90">
+                              <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                              <span className="leading-relaxed">{rec}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 5. Medical Disclaimer Banner */}
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5 text-2xs text-amber-900 dark:text-amber-300">
+                        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">
+                          <strong>Medical Disclaimer:</strong> This is not a medical diagnosis. It is general wellness guidance based on self-reported biometrics. Please consult a qualified healthcare professional.
                         </span>
-                        <Badge
-                          className={`text-xs font-semibold ${
-                            analysis.riskLevel === "Low"
-                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-                              : analysis.riskLevel === "Medium"
-                              ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"
-                              : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
-                          }`}
-                        >
-                          {analysis.riskLevel} Risk
-                        </Badge>
-                      </div>
-                      <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-                        {analysis.summary}
-                      </p>
-                    </div>
-
-                    {/* Key Attributes Overview */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-2xs">
-                      <div className="p-2.5 rounded-lg border bg-card/60">
-                        <span className="text-muted-foreground block">BMI</span>
-                        <span className="font-semibold text-foreground">{bmi} ({bmiCategory})</span>
-                      </div>
-                      <div className="p-2.5 rounded-lg border bg-card/60">
-                        <span className="text-muted-foreground block">Symptoms</span>
-                        <span className="font-semibold text-foreground">
-                          {selectedSymptoms.length + (customSymptoms.trim() ? 1 : 0)} reported
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-lg border bg-card/60">
-                        <span className="text-muted-foreground block">Activity</span>
-                        <span className="font-semibold text-foreground">{activityLevel}</span>
-                      </div>
-                      <div className="p-2.5 rounded-lg border bg-card/60">
-                        <span className="text-muted-foreground block">Sleep & Water</span>
-                        <span className="font-semibold text-foreground">{sleepHours}h • {waterLiters}L</span>
                       </div>
                     </div>
-
-                    {/* Lifestyle Recommendations */}
-                    <div className="space-y-2 pt-1">
-                      <h4 className="text-xs font-semibold text-foreground">
-                        Personalized Wellness Observations:
-                      </h4>
-                      <ul className="space-y-1.5">
-                        {analysis.recommendations.map((rec, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                            <span className="text-primary font-bold">•</span>
-                            <span>{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Medical Disclaimer Banner */}
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5 text-2xs text-amber-800 dark:text-amber-300">
-                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Medical Disclaimer:</strong> This is not a medical diagnosis. It is general wellness guidance based on self-reported biometrics. Please consult a qualified healthcare professional for medical concerns.
-                </span>
-              </div>
+                  );
+                })()
+              )}
 
               {/* Step 3 Actions */}
               <div className="flex items-center justify-between pt-2">
                 <Button
                   variant="outline"
                   onClick={() => setStep(2)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isAnalyzing}
                   className="gap-2 rounded-xl text-xs sm:text-sm"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -1006,11 +1210,20 @@ const Assessment: React.FC = () => {
                 </Button>
                 <Button
                   onClick={handleFinish}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isAnalyzing}
                   className="gap-2 rounded-xl text-xs sm:text-sm"
                 >
-                  {isSubmitting ? "Saving..." : "Save Assessment"}
-                  <CheckCircle2 className="w-4 h-4" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Save Assessment</span>
+                      <CheckCircle2 className="w-4 h-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>

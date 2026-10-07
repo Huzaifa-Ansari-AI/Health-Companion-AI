@@ -1,78 +1,83 @@
-// Supabase Edge Function: analyze-health
-// Executes secure server-side AI evaluation. Client never receives direct AI provider secret keys.
+// Supabase Edge Function: analyze-health (Milestone 4.5)
+// Executes LLM-driven dynamic health risk evaluation across metabolic, cardiovascular,
+// respiratory, oncological, and lifestyle recovery domains.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { invokeHealthAnalysis } from "../_shared/aiAdapter.ts";
+import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "../_shared/emergencyDetector.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface HealthPayload {
-  bmi: number;
-  bmiCategory: string;
-  symptoms: string[];
-  lifestyle: {
-    sleepHours?: number;
-    activityLevel?: string;
-    stressLevel?: string;
-    hydrationLiters?: number;
-  };
-}
-
 serve(async (req) => {
-  // Handle CORS preflight
+  // 1. CORS Preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // 2. Authentication Verification
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization token" }), {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const payload: HealthPayload = await req.json();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
-    // Deterministic validation rules & medical safety enforcement
-    // Strict categorical risk levels: 'Low' | 'Medium' | 'High'
-    let riskLevel: "Low" | "Medium" | "High" = "Low";
-    if (payload.symptoms.length >= 3 || payload.bmiCategory === "Obesity") {
-      riskLevel = "High";
-    } else if (payload.symptoms.length >= 1 || payload.bmiCategory === "Overweight" || payload.bmiCategory === "Underweight") {
-      riskLevel = "Medium";
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid authentication credentials" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // AI Provider invocation can be performed with Deno.env.get("AI_API_KEY")
-    // Fallback/Deterministic fallback recommendations:
-    const recommendations: string[] = [];
-    if (payload.bmiCategory !== "Normal weight") {
-      recommendations.push("Maintain a balanced, nutrient-dense diet and consult a certified nutritionist.");
-    }
-    if ((payload.lifestyle.sleepHours || 8) < 7) {
-      recommendations.push("Aim for 7-9 hours of continuous sleep to support metabolic recovery.");
-    }
-    recommendations.push("Engage in at least 150 minutes of moderate aerobic physical activity per week.");
-    recommendations.push("Drink at least 2 liters of water daily to maintain optimal hydration.");
+    // 3. Extract & Normalize Assessment Payload
+    const payload = await req.json();
 
-    const result = {
-      riskLevel,
-      summary: `Your BMI is ${payload.bmi} (${payload.bmiCategory}). Based on your reported symptoms and daily lifestyle profile, your overall wellness risk indicator is categorized as ${riskLevel}.`,
-      recommendations,
-      disclaimer: "This is not a medical diagnosis.",
-    };
+    // 4. Deterministic Medical Red Flag Emergency Screening
+    const symptomsText = Array.isArray(payload.symptoms) ? payload.symptoms.join(", ") : "";
+    const emergencyCheck = detectEmergency(symptomsText);
 
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // 5. Invoke LLM via Shared Adapter
+    const analysis = await invokeHealthAnalysis(JSON.stringify(payload));
+
+    // If deterministic red flags were detected, elevate overall risk to High if not already
+    if (emergencyCheck.isEmergency) {
+      analysis.overall_risk_level = "High";
+      if (!analysis.recommendations.some((r: string) => r.includes("emergency") || r.includes("immediate"))) {
+        analysis.recommendations.unshift(
+          "⚠️ Immediate medical attention recommended: reported symptoms indicate acute red flags."
+        );
+      }
+    }
+
+    return new Response(JSON.stringify(analysis), {
       status: 200,
-    });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
     });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(
+      JSON.stringify({
+        error: "AI_UNAVAILABLE",
+        message: "The AI assessment analysis engine is temporarily unavailable.",
+        details: message,
+      }),
+      {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
