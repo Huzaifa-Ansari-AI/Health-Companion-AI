@@ -97,6 +97,7 @@ export const ReportDataSchema = z.object({
   footer: ReportFooterSchema,
   isEdited: z.boolean().optional(),
   lastEditedAt: z.string().optional(),
+  isOffline: z.boolean().optional(),
 });
 export type ReportData = z.infer<typeof ReportDataSchema>;
 

@@ -22,9 +22,12 @@ import {
   TrendingUp,
   Edit3,
   RotateCcw,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 
 interface ReportViewProps {
   report: ReportData;
@@ -48,8 +51,24 @@ export const ReportView: React.FC<ReportViewProps> = ({
   const { toast } = useToast();
   const [isDownloadingPdf, setIsDownloadingPdf] = React.useState(false);
   const [includeTrends, setIncludeTrends] = React.useState(false);
+  const [copiedQuestions, setCopiedQuestions] = React.useState(false);
   const { header, patient, symptoms, lifestyle, risk, recommendations, doctorQuestions, footer } =
     report;
+
+  const handleCopyDoctorQuestions = async () => {
+    try {
+      const text = doctorQuestions.questions.map((q, idx) => `${idx + 1}. ${q}`).join("\n");
+      await navigator.clipboard.writeText(text);
+      setCopiedQuestions(true);
+      setTimeout(() => setCopiedQuestions(false), 2000);
+      toast({
+        title: "Discussion Points Copied",
+        description: "Ready to share with your healthcare provider.",
+      });
+    } catch {
+      // clipboard access error handled
+    }
+  };
 
   const handlePrint = () => {
     if (onPrint) {
@@ -84,19 +103,19 @@ export const ReportView: React.FC<ReportViewProps> = ({
     switch (level) {
       case "Low":
         return (
-          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 print:bg-emerald-50 print:text-emerald-900 px-3 py-1 font-semibold text-xs uppercase tracking-wide">
+          <Badge className="bg-emerald-100 text-emerald-950 border-emerald-400 print:bg-emerald-50 print:text-emerald-950 px-3 py-1 font-bold text-xs uppercase tracking-wide">
             Low Risk
           </Badge>
         );
       case "Medium":
         return (
-          <Badge className="bg-amber-100 text-amber-800 border-amber-300 print:bg-amber-50 print:text-amber-900 px-3 py-1 font-semibold text-xs uppercase tracking-wide">
+          <Badge className="bg-amber-100 text-amber-950 border-amber-400 print:bg-amber-50 print:text-amber-950 px-3 py-1 font-bold text-xs uppercase tracking-wide">
             Medium Risk
           </Badge>
         );
       case "High":
         return (
-          <Badge className="bg-rose-100 text-rose-800 border-rose-300 print:bg-rose-50 print:text-rose-900 px-3 py-1 font-semibold text-xs uppercase tracking-wide">
+          <Badge className="bg-rose-100 text-rose-950 border-rose-400 print:bg-rose-50 print:text-rose-950 px-3 py-1 font-bold text-xs uppercase tracking-wide">
             High Risk
           </Badge>
         );
@@ -126,7 +145,13 @@ export const ReportView: React.FC<ReportViewProps> = ({
           <FileText className="w-4 h-4 text-primary" />
           <span>Report ID: <span className="font-mono font-medium text-foreground">{header.reportId}</span></span>
           <span className="text-muted-foreground/40">•</span>
-          <span>{report.source === "chat" ? "AI Consultation Summary" : "Vitals Assessment"}</span>
+          <span>
+            {report.isOffline
+              ? "Offline Vitals Assessment"
+              : report.source === "chat"
+              ? "AI Consultation Summary"
+              : "Vitals Assessment"}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -206,12 +231,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
         {/* SECTION 1: HEADER */}
         <header className="border-b border-border/70 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center print:border print:border-primary/20">
-                <Heart className="w-5 h-5 text-primary" />
-              </div>
-              <span className="font-bold text-lg text-foreground tracking-tight">{header.appName}</span>
-              <Badge variant="outline" className="text-2xs uppercase tracking-wider ml-1 text-primary border-primary/30">
+            <div className="flex items-center gap-3">
+              <AfiyatLogo variant="mark" size="xs" linkTo="/" />
+              <Badge variant="outline" className="text-2xs uppercase tracking-wider text-primary border-primary/30">
                 Wellness Summary
               </Badge>
               {report.isEdited && (
@@ -240,6 +262,26 @@ export const ReportView: React.FC<ReportViewProps> = ({
             </div>
           </div>
         </header>
+
+        {/* OFFLINE MODE BANNER (Requirement A) */}
+        {report.isOffline && (
+          <div className="p-4 sm:p-5 rounded-xl bg-amber-500/10 border-2 border-amber-500/40 text-foreground space-y-2 break-inside-avoid">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                OFFLINE MODE
+              </Badge>
+              <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                Rule-Based Result — Not AI-Analyzed
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed font-normal">
+              This report was generated using the application&apos;s offline rules. An AI model did not analyze your responses, and the result may be less personalized than an AI-assisted assessment.
+            </p>
+            <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+              Notice: This is not a medical diagnosis. Please consult a qualified healthcare professional.
+            </p>
+          </div>
+        )}
 
         {/* SECTION 2: PATIENT DETAILS */}
         <section className="space-y-3 break-inside-avoid">
@@ -277,7 +319,11 @@ export const ReportView: React.FC<ReportViewProps> = ({
             <div className="col-span-2">
               <span className="text-muted-foreground block text-2xs uppercase tracking-wide">Evaluation Source</span>
               <span className="text-xs text-foreground font-medium">
-                {report.source === "chat" ? "AI Symptom Consultation" : "Vitals Assessment Questionnaire"}
+                {report.isOffline
+                  ? "Standardized Offline Questionnaire (Rule-Based)"
+                  : report.source === "chat"
+                  ? "AI Symptom Consultation"
+                  : "Vitals Assessment Questionnaire"}
               </span>
             </div>
           </div>
@@ -423,19 +469,40 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
         {/* SECTION 7: DOCTOR DISCUSSION POINTS */}
         <section className="space-y-3 break-inside-avoid">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
-            <HelpCircle className="w-4 h-4" />
-            <span>6. Suggested Doctor Discussion Points</span>
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+              <HelpCircle className="w-4 h-4" />
+              <span>6. Suggested Doctor Discussion Points</span>
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyDoctorQuestions}
+              className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground print:hidden rounded-lg hover:bg-primary/10"
+              title="Copy questions to clipboard"
+            >
+              {copiedQuestions ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-700 font-medium">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-primary" />
+                  <span>Copy Questions</span>
+                </>
+              )}
+            </Button>
+          </div>
           <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
             <p className="text-xs text-muted-foreground">
               These suggested questions are designed to facilitate an informed, productive conversation with your licensed physician or primary healthcare provider:
             </p>
-            <ol className="space-y-1.5 pt-1">
+            <ol className="space-y-2 pt-1">
               {doctorQuestions.questions.map((q, idx) => (
-                <li key={idx} className="text-xs sm:text-sm text-foreground/90 flex items-start gap-2">
-                  <span className="font-mono text-xs text-primary font-bold shrink-0">{idx + 1}.</span>
-                  <span>{q}</span>
+                <li key={idx} className="text-xs sm:text-sm text-foreground/90 flex items-start gap-2.5 p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="font-mono text-xs text-primary font-bold shrink-0 mt-0.5">{idx + 1}.</span>
+                  <span className="leading-relaxed">{q}</span>
                 </li>
               ))}
             </ol>
@@ -457,7 +524,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <span>Verification Hash: <strong className="font-mono text-foreground">{footer.verificationCode}</strong></span>
             </div>
             <div>
-              <span>Generated via Health Companion AI — Wellness Intelligence Platform</span>
+              <span>Generated via Afiyat AI (عافیت AI) — Wellness Intelligence Platform</span>
             </div>
           </div>
         </footer>

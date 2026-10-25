@@ -15,6 +15,7 @@ import { SharedLinksManager } from "@/components/report/SharedLinksManager";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 
 const Report: React.FC = () => {
   const { assessmentId } = useParams<{ assessmentId: string }>();
@@ -115,11 +116,11 @@ const Report: React.FC = () => {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Dashboard</span>
+            <span className="font-medium">Back to Dashboard</span>
           </Link>
-          <div className="text-xs text-muted-foreground">
-            {isDemo && <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full mr-2">Demo</span>}
-            Health Companion AI — Report Viewer
+          <div className="flex items-center gap-3">
+            <AfiyatLogo variant="mark" size="xs" linkTo="/" />
+            {isDemo && <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-medium">Demo</span>}
           </div>
         </div>
       </header>

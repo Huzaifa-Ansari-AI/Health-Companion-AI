@@ -210,7 +210,7 @@ export const PrivacyCenterTab: React.FC<PrivacyCenterTabProps> = ({ userId, isDe
                 </h2>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Health Companion AI is designed to align with good privacy practices. All consents are
+                Afiyat AI is designed to align with good privacy practices. All consents are
                 strictly opt-in (disabled by default). You can grant or revoke permission for each feature
                 at any time.
               </p>
@@ -378,7 +378,7 @@ export const PrivacyCenterTab: React.FC<PrivacyCenterTabProps> = ({ userId, isDe
           </CardTitle>
           <CardDescription className="text-xs leading-relaxed">
             Download a complete, machine-readable JSON copy of all personal records, vitals assessments, daily
-            check-ins, consultation chat transcripts, and consent logs stored in Health Companion AI.
+            check-ins, consultation chat transcripts, and consent logs stored in Afiyat AI.
           </CardDescription>
         </CardHeader>
         <CardContent>

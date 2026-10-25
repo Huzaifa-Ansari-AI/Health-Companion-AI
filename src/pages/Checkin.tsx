@@ -4,7 +4,8 @@ import { useAuth } from "@/context/AuthContext";
 import { CheckinForm } from "@/components/tracking/CheckinForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, ArrowLeft, Shield } from "lucide-react";
+import { ArrowLeft, Shield } from "lucide-react";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 
 const Checkin: React.FC = () => {
   const { isDemo } = useAuth();
@@ -16,12 +17,7 @@ const Checkin: React.FC = () => {
       <header className="bg-card border-b border-border/60 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Heart className="w-5 h-5 text-primary" />
-              </div>
-              <span className="font-bold text-base text-foreground">HealthAI</span>
-            </Link>
+            <AfiyatLogo variant="mark" size="xs" linkTo="/" />
             {isDemo && (
               <Badge variant="secondary" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
                 Demo Mode

@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Moon, Sparkles, Info, BarChart2, ScatterPlot } from "lucide-react";
+import { Moon, Sparkles, Info, BarChart2 } from "lucide-react";
 import { TrendDataPoint, SleepFatigueInsight } from "@/lib/trendAggregation";
 
 interface SleepFatigueChartProps {

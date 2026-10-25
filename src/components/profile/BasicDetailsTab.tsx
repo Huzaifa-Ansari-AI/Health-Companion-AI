@@ -122,7 +122,7 @@ export const BasicDetailsTab: React.FC<BasicDetailsTabProps> = ({
                 className="rounded-xl h-10"
               />
               <p className="text-2xs text-muted-foreground">
-                Health Companion AI is designed for adults aged 18 and older.
+                Afiyat AI is designed for adults aged 18 and older.
               </p>
             </div>
 

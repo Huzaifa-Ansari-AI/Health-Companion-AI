@@ -23,9 +23,9 @@ import {
   ShieldCheck,
   Loader2,
   Sparkles,
-  Heart,
   Lock,
 } from "lucide-react";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 
 const Profile: React.FC = () => {
   const { user, isDemo } = useAuth();
@@ -81,14 +81,7 @@ const Profile: React.FC = () => {
               </Button>
             </Link>
             <span className="text-muted-foreground/40">•</span>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Heart className="w-4 h-4" />
-              </div>
-              <span className="font-semibold text-foreground text-sm hidden sm:inline">
-                Health Companion AI
-              </span>
-            </div>
+            <AfiyatLogo variant="mark" size="xs" linkTo="/" />
           </div>
 
           <div className="flex items-center gap-2">

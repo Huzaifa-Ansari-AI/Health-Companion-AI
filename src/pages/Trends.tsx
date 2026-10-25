@@ -17,8 +17,8 @@ import { MoodEnergyChart } from "@/components/trends/MoodEnergyChart";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 import {
-  Heart,
   ArrowLeft,
   Calendar,
   Sparkles,
@@ -84,12 +84,7 @@ const Trends: React.FC = () => {
       <header className="bg-card border-b border-border/60 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Heart className="w-5 h-5 text-primary" />
-              </div>
-              <span className="font-bold text-base text-foreground">HealthAI</span>
-            </Link>
+            <AfiyatLogo variant="mark" size="xs" linkTo="/" />
             {isDemo && (
               <Badge variant="secondary" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
                 Demo Mode
@@ -99,7 +94,7 @@ const Trends: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <Link to="/checkin">
-              <Button size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white font-medium">
+              <Button size="sm" className="h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl shadow-xs">
                 <PlusCircle className="w-3.5 h-3.5 mr-1" />
                 Check In
               </Button>

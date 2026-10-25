@@ -173,35 +173,45 @@ export const CheckinForm: React.FC<CheckinFormProps> = ({ onSuccess, initialDate
         note: note.trim() ? note.trim().slice(0, 500) : null,
       };
 
+      // 1. PRIMARY ACTION: Save daily check-in
       await upsertDailyCheckin(user.id, payload, isDemo);
 
-      // Optional weight tracking
-      const parsedWeight = parseFloat(weightKg);
-      if (!isNaN(parsedWeight) && parsedWeight >= 20 && parsedWeight <= 350) {
-        await saveBodyMeasurement(
-          user.id,
-          {
-            weight_kg: parsedWeight,
-            source: "checkin",
-            measured_at: `${selectedDate}T12:00:00.000Z`,
-          },
-          isDemo
-        );
-      }
-
-      // Unlock First Check-in achievement idempotently
-      await unlockAchievement(user.id, "first_checkin", isDemo);
+      const isUpdate = hasExistingEntry;
+      setHasExistingEntry(true);
 
       toast({
-        title: hasExistingEntry ? "Check-in updated" : "Check-in completed",
+        title: isUpdate ? "Check-in updated" : "Check-in completed",
         description: "Thank you for checking in with yourself today. Keep up the gentle rhythm!",
       });
 
-      setHasExistingEntry(true);
+      // 2. SECONDARY ACTIONS: Non-blocking weight measurement and achievement awarding
+      try {
+        const parsedWeight = parseFloat(weightKg);
+        if (!isNaN(parsedWeight) && parsedWeight >= 20 && parsedWeight <= 350) {
+          await saveBodyMeasurement(
+            user.id,
+            {
+              weight_kg: parsedWeight,
+              source: "checkin",
+              measured_at: `${selectedDate}T12:00:00.000Z`,
+            },
+            isDemo
+          );
+        }
+
+        // Unlock First Check-in achievement idempotently
+        await unlockAchievement(user.id, "first_checkin", isDemo);
+      } catch (secondaryErr: unknown) {
+        // Safe logging without personal or health information
+        const safeMsg = secondaryErr instanceof Error ? secondaryErr.message : "Unknown error";
+        console.warn("[Tracking] Non-critical check-in background task skipped:", safeMsg);
+      }
+
       if (onSuccess) {
         onSuccess();
       }
     } catch (err: unknown) {
+      // Displays failure toast ONLY when the primary check-in itself fails
       const message = err instanceof Error ? err.message : "Failed to record your check-in.";
       toast({
         title: "Check-in failed",

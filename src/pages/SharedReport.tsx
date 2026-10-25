@@ -6,8 +6,9 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getSharedReport, SharedReportResult } from "@/services/shareService";
 import { ReportView } from "@/components/report/ReportView";
-import { ShieldCheck, AlertCircle, Clock, Heart, Loader2 } from "lucide-react";
+import { ShieldCheck, AlertCircle, Clock, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 
 const SharedReport: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -67,12 +68,9 @@ const SharedReport: React.FC = () => {
       {/* Public Header Bar */}
       <header className="bg-card border-b border-border/60 sticky top-0 z-40 print:hidden">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Heart className="w-4 h-4 text-primary" />
-            </div>
-            <span className="font-bold text-base text-foreground tracking-tight">Health Companion AI</span>
-            <Badge variant="outline" className="text-2xs text-primary border-primary/30 ml-1">
+          <div className="flex items-center gap-3">
+            <AfiyatLogo variant="mark" size="xs" linkTo="/" />
+            <Badge variant="outline" className="text-2xs text-primary border-primary/30">
               Verified Shared View
             </Badge>
           </div>

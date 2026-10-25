@@ -287,6 +287,7 @@ export function buildReportData(
     footer,
     isEdited: Boolean(edits),
     lastEditedAt: edits?.lastEditedAt,
+    isOffline: assessment.lifestyle_data?.assessment_mode === "offline" || assessment.id?.startsWith("demo-"),
   };
 
   return ReportDataSchema.parse(rawReport);

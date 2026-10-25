@@ -111,7 +111,7 @@ export const MedicationsSection: React.FC<MedicationsSectionProps> = ({
             Context Only — Non-Prescriptive & Non-Diagnostic
           </strong>
           <p>
-            This is a private text note list for conversational context only. Health Companion AI <strong>never</strong> prescribes medications, evaluates dosages, checks drug interactions, or advises stopping/changing any medication.
+            This is a private text note list for conversational context only. Afiyat AI <strong>never</strong> prescribes medications, evaluates dosages, checks drug interactions, or advises stopping/changing any medication.
           </p>
           <p className="font-medium text-amber-800 dark:text-amber-300">
             Always consult your prescribing physician or licensed pharmacist for any medication questions.

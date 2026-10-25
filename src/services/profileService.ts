@@ -578,3 +578,6 @@ export function calculateProfileCompleteness(
 
   return { score, completedSections, missingSections };
 }
+
+export type { ComprehensiveHealthProfile };
+

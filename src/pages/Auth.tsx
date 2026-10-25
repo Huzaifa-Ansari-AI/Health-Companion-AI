@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { mapAuthError, validatePassword } from "@/lib/authErrors";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -122,7 +123,7 @@ const Auth = () => {
           // Auto-confirmed / direct session
           toast({
             title: "Account created!",
-            description: "Welcome to Health Companion AI.",
+            description: "Welcome to Afiyat AI.",
           });
           navigate("/dashboard");
         }
@@ -193,14 +194,9 @@ const Auth = () => {
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center gap-2 group">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <Heart className="w-6 h-6 text-primary" />
-              </div>
-              <span className="text-xl font-semibold text-foreground">HealthAI</span>
-            </Link>
+          {/* Logo with authentic Urdu Calligraphy beneath emblem */}
+          <div className="flex justify-center mb-8">
+            <AfiyatLogo variant="mark" size="md" linkTo="/" />
           </div>
 
           {/* DEDICATED VERIFICATION EMAIL SENT SCREEN */}
