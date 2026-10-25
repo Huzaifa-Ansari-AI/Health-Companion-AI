@@ -1,77 +1,93 @@
-import { ClipboardList, Brain, FileText } from "lucide-react";
+import React from "react";
+import { ClipboardList, Brain, TrendingUp } from "lucide-react";
 
 const HowItWorks = () => {
   const steps = [
     {
       icon: ClipboardList,
       step: "01",
-      title: "Enter your health details",
-      description: "Answer simple questions about your lifestyle, habits, and health history. Takes less than 5 minutes.",
+      title: "Enter Your Health Details",
+      description: "Fill in basic health information like age, weight, height, and lifestyle habits.",
+      iconBg: "bg-emerald-500 text-white",
+      stepColor: "text-slate-300",
     },
     {
       icon: Brain,
       step: "02",
-      title: "AI analyzes health patterns",
-      description: "Our AI processes your information to identify potential health patterns and risk factors.",
+      title: "AI Analyzes Patterns",
+      description: "Our AI processes your data to identify potential health patterns and risk factors.",
+      iconBg: "bg-teal-500 text-white",
+      stepColor: "text-slate-300",
     },
     {
-      icon: FileText,
+      icon: TrendingUp,
       step: "03",
-      title: "Get simple health insights",
-      description: "Receive easy-to-understand insights with personalized recommendations for a healthier lifestyle.",
+      title: "Get Simple Insights",
+      description: "Receive easy-to-understand health insights with personalized lifestyle recommendations.",
+      iconBg: "bg-cyan-500 text-white",
+      stepColor: "text-slate-300",
     },
   ];
 
   return (
-    <section id="how-it-works" className="py-24 bg-background">
+    <section id="how-it-works" className="py-24 bg-white border-t border-slate-100">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section header */}
+        {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-secondary text-secondary-foreground text-sm font-medium mb-4">
-            How It Works
+          <span className="inline-block text-xs font-bold tracking-widest text-teal-600 uppercase mb-3 px-3 py-1 bg-teal-50 rounded-full border border-teal-100">
+            HOW IT WORKS
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-            Three simple steps to better health awareness
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
+            Three Simple Steps to{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">
+              Better Health
+            </span>
           </h2>
-          <p className="text-muted-foreground">
-            No medical jargon. No complicated forms. Just straightforward health insights.
+          <p className="text-base sm:text-lg text-slate-600">
+            Get started in minutes with our easy-to-use health assessment tool.
           </p>
         </div>
 
-        {/* Steps */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {steps.map((step, index) => (
-            <div 
-              key={step.step} 
-              className="relative group"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              {/* Connector line */}
-              {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-16 left-full w-full h-0.5 bg-gradient-to-r from-primary/20 to-transparent -translate-x-1/2 z-0" />
-              )}
-              
-              <div className="relative bg-card rounded-3xl p-8 border border-border/50 shadow-soft group-hover:shadow-card transition-all duration-300 group-hover:-translate-y-1">
-                {/* Step number */}
-                <span className="absolute -top-3 -right-3 w-12 h-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold shadow-soft">
-                  {step.step}
-                </span>
+        {/* 3 Step Cards with Connectors */}
+        <div className="relative max-w-5xl mx-auto">
+          {/* Connecting line behind cards on desktop */}
+          <div
+            className="hidden md:block absolute top-1/2 left-16 right-16 h-0.5 bg-slate-200 -translate-y-6 z-0"
+            aria-hidden="true"
+          />
 
-                {/* Icon */}
-                <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mb-6 group-hover:bg-primary/10 transition-colors">
-                  <step.icon className="w-8 h-8 text-primary" />
+          <div className="grid md:grid-cols-3 gap-8 relative z-10">
+            {steps.map((step) => (
+              <div
+                key={step.step}
+                className="group bg-white rounded-3xl p-8 border border-slate-200/80 shadow-sm hover:shadow-card transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between"
+              >
+                <div>
+                  {/* Top card header: Icon badge & Large Step Number */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div
+                      className={`w-14 h-14 rounded-2xl ${step.iconBg} flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform`}
+                    >
+                      <step.icon className="w-7 h-7" />
+                    </div>
+                    <span className={`text-4xl font-extrabold ${step.stepColor} tracking-tight select-none`}>
+                      {step.step}
+                    </span>
+                  </div>
+
+                  {/* Step Title */}
+                  <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-emerald-700 transition-colors">
+                    {step.title}
+                  </h3>
+
+                  {/* Step Description */}
+                  <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
+                    {step.description}
+                  </p>
                 </div>
-
-                {/* Content */}
-                <h3 className="text-xl font-semibold text-foreground mb-3">
-                  {step.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {step.description}
-                </p>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

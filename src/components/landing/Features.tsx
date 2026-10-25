@@ -1,87 +1,76 @@
+import React from "react";
 import { Calculator, Activity, Lightbulb, Download } from "lucide-react";
 
 const Features = () => {
   const features = [
     {
       icon: Calculator,
-      title: "Instant BMI Calculation",
-      description: "Get your Body Mass Index calculated instantly with health range indicators.",
-      color: "bg-health-green-light",
-      iconColor: "text-primary",
+      title: "Instant BMI Evaluation",
+      description: "Get your Body Mass Index evaluated instantly with WHO health ranges and body metric tracking.",
+      iconBg: "bg-emerald-100 text-emerald-700",
+      borderAccent: "hover:border-emerald-300",
     },
     {
       icon: Activity,
-      title: "Disease Risk Levels",
-      description: "Understand your risk levels (Low / Medium / High) for common health conditions.",
-      color: "bg-health-blue-light",
-      iconColor: "text-health-blue",
+      title: "Categorical Risk Assessment",
+      description: "Understand your health patterns categorized safely into Low, Medium, or High risk levels.",
+      iconBg: "bg-teal-100 text-teal-700",
+      borderAccent: "hover:border-teal-300",
     },
     {
       icon: Lightbulb,
-      title: "Lifestyle Recommendations",
-      description: "Receive personalized tips to improve your diet, exercise, and daily habits.",
-      color: "bg-health-warm",
-      iconColor: "text-amber-600",
+      title: "Non-Prescriptive Guidance",
+      description: "Receive practical lifestyle guidance tailored to your hydration, sleep, nutrition, and activity.",
+      iconBg: "bg-amber-100 text-amber-700",
+      borderAccent: "hover:border-amber-300",
     },
     {
       icon: Download,
-      title: "Downloadable Report",
-      description: "Export your health insights as a PDF to share with family or healthcare providers.",
-      color: "bg-secondary",
-      iconColor: "text-secondary-foreground",
+      title: "Doctor-Ready PDF Reports",
+      description: "Export structured, vector PDF summaries to facilitate informed discussions with your healthcare provider.",
+      iconBg: "bg-cyan-100 text-cyan-700",
+      borderAccent: "hover:border-cyan-300",
     },
   ];
 
   return (
-    <section id="features" className="py-24 gradient-hero">
+    <section id="features" className="py-24 bg-slate-50/70 border-t border-slate-200/60">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section header */}
+        {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-card text-secondary-foreground text-sm font-medium mb-4 shadow-soft">
-            What You Get
+          <span className="inline-block text-xs font-bold tracking-widest text-emerald-700 uppercase mb-3 px-3.5 py-1 bg-emerald-50 rounded-full border border-emerald-200">
+            WHAT YOU GET
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-            Everything you need to understand your health
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
+            Everything You Need to Understand Your Health
           </h2>
-          <p className="text-muted-foreground">
-            Comprehensive health insights without the complexity of medical reports.
+          <p className="text-base sm:text-lg text-slate-600">
+            Comprehensive wellness intelligence without the confusion of complex medical paperwork.
           </p>
         </div>
 
-        {/* Feature cards */}
+        {/* Feature Cards Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-          {features.map((feature, index) => (
-            <div 
+          {features.map((feature) => (
+            <div
               key={feature.title}
-              className="group bg-card rounded-3xl p-6 border border-border/50 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1"
-              style={{ animationDelay: `${index * 100}ms` }}
+              className={`bg-white rounded-3xl p-7 border border-slate-200 shadow-sm hover:shadow-card transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between ${feature.borderAccent}`}
             >
-              {/* Icon */}
-              <div className={`w-14 h-14 rounded-2xl ${feature.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
-                <feature.icon className={`w-7 h-7 ${feature.iconColor}`} />
+              <div>
+                <div
+                  className={`w-14 h-14 rounded-2xl ${feature.iconBg} flex items-center justify-center mb-6 shadow-xs`}
+                >
+                  <feature.icon className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2.5">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed font-normal">
+                  {feature.description}
+                </p>
               </div>
-
-              {/* Content */}
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                {feature.title}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
             </div>
           ))}
-        </div>
-
-        {/* Disclaimer banner */}
-        <div className="mt-16 max-w-3xl mx-auto">
-          <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-soft text-center">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">Important:</span>{" "}
-              This tool provides general health insights and is{" "}
-              <span className="text-primary font-medium">not a medical diagnosis</span>.
-              Always consult healthcare professionals for medical advice.
-            </p>
-          </div>
         </div>
       </div>
     </section>

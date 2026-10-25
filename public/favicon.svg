@@ -1,5 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="16" fill="#2E9E88"/>
-  <path d="M32 48.5C32 48.5 16 38 16 26.5C16 20.5 20.5 16 26.5 16C30 16 32 18.5 32 18.5C32 18.5 34 16 37.5 16C43.5 16 48 20.5 48 26.5C48 38 32 48.5 32 48.5Z" fill="white" opacity="0.95"/>
-  <path d="M22 28L28 28L31 23L34 33L37 28L42 28" stroke="#2E9E88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="afiyatGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="50%" stop-color="#0D9488" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#afiyatGrad)"/>
+  <!-- Figure inside Heart -->
+  <circle cx="32" cy="24" r="5" fill="#FFFFFF"/>
+  <path d="M25 40C25 34.5 28.5 32 32 32C35.5 32 39 34.5 39 40C35 43 29 43 25 40Z" fill="#FFFFFF" opacity="0.95"/>
+  <!-- Leaf flourish -->
+  <path d="M32 46C41 42 46 33 46 25C40 25 33 30 32 46Z" fill="#FFFFFF" opacity="0.85"/>
+  <!-- Star accent -->
+  <path d="M47 15L48.2 18.8L52 20L48.2 21.2L47 25L45.8 21.2L42 20L45.8 18.8Z" fill="#FFFFFF"/>
 </svg>
