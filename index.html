@@ -3,21 +3,82 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f766e" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href="https://afiyatai.com/" />
+
     <title>Afiyat AI — AI-Powered Health & Wellness Assistant</title>
-    <meta name="description" content="Afiyat AI (عافیت AI) is a safe, intelligent health companion providing personalized wellness awareness, BMI evaluation, risk assessments, and lifestyle guidance." />
+    <meta
+      name="description"
+      content="Afiyat AI (عافیت AI) is a safe, non-diagnostic wellness assistant providing personalized health evaluations, BMI categorization, risk assessments, and lifestyle guidance."
+    />
     <meta name="author" content="Afiyat AI Team" />
+    <meta name="robots" content="index, follow" />
 
-    <meta property="og:title" content="Afiyat AI — AI-Powered Health & Wellness Assistant" />
-    <meta property="og:description" content="Understand potential health risks and improve your lifestyle with Afiyat AI. Your Health, Our Priority." />
-    <meta property="og:image" content="/afiyat-logo.png" />
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://afiyatai.com/" />
+    <meta property="og:site_name" content="Afiyat AI (عافیت AI)" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="Afiyat AI — AI-Powered Health & Wellness Assistant" />
+    <meta
+      property="og:description"
+      content="Understand potential health risks and improve your wellness with Afiyat AI. Safe, non-diagnostic, and doctor-ready."
+    />
+    <meta property="og:image" content="https://afiyatai.com/afiyat-logo.png" />
+    <meta property="og:image:alt" content="Afiyat AI Logo & Wellness Brand" />
 
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://afiyatai.com/" />
     <meta name="twitter:title" content="Afiyat AI — AI-Powered Health & Wellness Assistant" />
-    <meta name="twitter:description" content="Understand potential health risks and improve your lifestyle with Afiyat AI. Your Health, Our Priority." />
-    <meta name="twitter:image" content="/afiyat-logo.png" />
+    <meta
+      name="twitter:description"
+      content="Understand potential health risks and improve your wellness with Afiyat AI. Safe, non-diagnostic, and doctor-ready."
+    />
+    <meta name="twitter:image" content="https://afiyatai.com/afiyat-logo.png" />
+    <meta name="twitter:image:alt" content="Afiyat AI Logo" />
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://afiyatai.com/#website",
+          "url": "https://afiyatai.com/",
+          "name": "Afiyat AI",
+          "alternateName": "عافیت AI",
+          "description": "AI-powered wellness companion offering BMI evaluation, health risk categorization, and lifestyle guidance.",
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://afiyatai.com/#application",
+          "name": "Afiyat AI",
+          "alternateName": "عافیت AI",
+          "applicationCategory": "HealthApplication",
+          "operatingSystem": "All",
+          "url": "https://afiyatai.com/",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "Safe wellness and health awareness application. Not a medical device or doctor replacement. Provides non-diagnostic lifestyle evaluations.",
+          "featureList": [
+            "BMI Evaluation with Visual Metric Scales",
+            "3-Step Categorical Health Risk Assessment",
+            "AI Symptom Consultation Assistant (English & Roman Urdu)",
+            "Doctor-Ready Editable Health Summary Reports",
+            "Longitudinal Health & Vitals Tracking"
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
 
   <body>
@@ -25,4 +86,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

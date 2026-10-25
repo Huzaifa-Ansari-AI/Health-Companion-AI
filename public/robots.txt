@@ -1,14 +1,24 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
+# ==============================================================================
+# Afiyat AI — Search Engine Directives
+# Medical Safety & Privacy: Private patient routes and assessments are strictly disallowed.
+# ==============================================================================
 
 User-agent: *
-Allow: /
+Allow: /$
+Allow: /favicon.ico
+Allow: /favicon.svg
+Allow: /favicon.png
+Allow: /afiyat-*.png
+
+# Disallow private patient workflows, assessment data, chats, and health histories
+Disallow: /dashboard
+Disallow: /assessment
+Disallow: /chat
+Disallow: /checkin
+Disallow: /trends
+Disallow: /profile
+Disallow: /reports/
+Disallow: /shared/
+Disallow: /auth
+
+Sitemap: https://afiyatai.com/sitemap.xml

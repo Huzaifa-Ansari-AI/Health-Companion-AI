@@ -141,7 +141,7 @@ flowchart TD
 
 ---
 
-### Phase 5 — Core Web Vitals & Performance Telemetry
+### Phase 5 — Core Web Vitals & Performance Telemetry (Completed & Verified)
 - **Objective:** Capture real-user experience metrics (LCP, INP, CLS, FCP, TTFB) without collecting sensitive personal data or adding heavy dependencies.
 - **Dependencies:** `web-vitals` (standard Google Chrome library).
 - **Files to Create / Modify:**
@@ -158,7 +158,7 @@ flowchart TD
 
 ---
 
-### Phase 6 — Technical SEO, Open Graph & Launch Landing Page
+### Phase 6 — Technical SEO, Open Graph & Launch Landing Page (Completed & Verified)
 - **Objective:** Ensure Afiyat AI has production-ready metadata, social cards, search engine directives, and structured data with honest, non-diagnostic claims.
 - **Files to Create / Modify:**
   - `index.html` *(Update title, descriptions, canonical links, Open Graph, Twitter cards, JSON-LD)*
@@ -194,7 +194,7 @@ flowchart TD
 
 ---
 
-### Phase 7 — Launch Readiness, End-to-End Verification & Audit
+### Phase 7 — Launch Readiness, End-to-End Verification & Audit (Completed & Verified)
 - **Objective:** Comprehensive sign-off, end-to-end smoke testing, verification across all quality gates, and launch readiness checklist.
 - **Files to Modify:**
   - `docs/ROADMAP.md` *(Update Milestone 5 checkboxes)*
