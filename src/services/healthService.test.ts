@@ -4,6 +4,7 @@ import {
   fetchUserAssessments,
   saveAssessment,
   saveChatAssessment,
+  deleteAssessment,
   feetInchesToCm,
   cmToFeetInches,
   lbsToKg,
@@ -41,6 +42,24 @@ describe("healthService - calculateBMI", () => {
     const { bmi, category } = calculateBMI(175, 70);
     expect(bmi).toBe(22.9);
     expect(category).toBe("Normal weight");
+  });
+
+  it("calculates severe thinness BMI (< 16.0) correctly", () => {
+    const { bmi, category } = calculateBMI(180, 48);
+    expect(bmi).toBe(14.8);
+    expect(category).toBe("Severe Thinness");
+  });
+
+  it("handles boundary between severe thinness (< 16.0) and underweight (16.0 - 18.4)", () => {
+    // 48.7 kg at 175 cm gives bmi 15.9 -> Severe Thinness
+    const severe = calculateBMI(175, 48.7);
+    expect(severe.bmi).toBe(15.9);
+    expect(severe.category).toBe("Severe Thinness");
+
+    // 49.0 kg at 175 cm gives bmi 16.0 -> Underweight
+    const underweight = calculateBMI(175, 49.0);
+    expect(underweight.bmi).toBe(16.0);
+    expect(underweight.category).toBe("Underweight");
   });
 
   it("calculates underweight BMI correctly", () => {
@@ -134,6 +153,29 @@ describe("healthService - Demo Assessments Persistence", () => {
     expect(history[0].lifestyle_data?.harmful_substances).toContain("Excess energy drinks / cold drinks");
   });
 
+  it("saves an offline assessment with assessment_mode: 'offline' in lifestyle_data", async () => {
+    const offlineRecord = {
+      user_id: "demo-user",
+      height_cm: 175,
+      weight_kg: 70,
+      bmi: 22.9,
+      bmi_category: "Normal weight",
+      symptoms: ["Occasional fatigue"],
+      lifestyle_data: {
+        assessment_mode: "offline" as const,
+        sleep_hours: 7,
+        water_liters: 2,
+      },
+      risk_level: "Low" as const,
+      ai_summary: "Deterministic rule-based summary.",
+      recommendations: ["Maintain hydration."],
+      disclaimer: "This is not a medical diagnosis.",
+    };
+
+    const saved = await saveAssessment(offlineRecord, true);
+    expect(saved.lifestyle_data?.assessment_mode).toBe("offline");
+  });
+
   it("saves a chat-based consultation summary with source: 'chat'", async () => {
     const summary = {
       symptoms: ["Tension headache", "Eye strain"],
@@ -160,5 +202,56 @@ describe("healthService - Demo Assessments Persistence", () => {
     const history = await fetchUserAssessments("demo-user", true);
     const sessionRecords = history.filter((h) => h.session_id === "test-session-999");
     expect(sessionRecords.length).toBe(1); // Exactly 1 record
+  });
+
+  it("deletes an assessment by ID and cascades cleanup to demo shares", async () => {
+    // 1. Create and save an assessment in demo mode
+    const record = await saveAssessment(
+      {
+        user_id: "demo-user",
+        height_cm: 180,
+        weight_kg: 75,
+        bmi: 23.1,
+        bmi_category: "Normal weight",
+        symptoms: ["Fatigue"],
+        risk_level: "Low",
+        ai_summary: "Test summary",
+        recommendations: ["Rest"],
+        disclaimer: "This is not a medical diagnosis.",
+      },
+      true
+    );
+
+    expect(record.id).toBeDefined();
+    const id = record.id!;
+
+    // 2. Set mock demo share records
+    localStorage.setItem(
+      "healthai_demo_shares",
+      JSON.stringify([
+        { id: "share-1", assessment_id: id, token: "tok1" },
+        { id: "share-2", assessment_id: "other-id", token: "tok2" },
+      ])
+    );
+
+    // Verify it exists in history
+    let history = await fetchUserAssessments("demo-user", true);
+    expect(history.some((h) => h.id === id)).toBe(true);
+
+    // 3. Delete the assessment
+    await deleteAssessment(id, true);
+
+    // 4. Verify assessment is removed from history
+    history = await fetchUserAssessments("demo-user", true);
+    expect(history.some((h) => h.id === id)).toBe(false);
+
+    // 5. Verify demo shares associated with the assessment are cleaned up
+    const shares = JSON.parse(localStorage.getItem("healthai_demo_shares") || "[]");
+    expect(shares.length).toBe(1);
+    expect(shares[0].assessment_id).toBe("other-id");
+  });
+
+  it("throws error if deleteAssessment is called with empty ID", async () => {
+    await expect(deleteAssessment("", true)).rejects.toThrow("Assessment ID is required for deletion.");
   });
 });

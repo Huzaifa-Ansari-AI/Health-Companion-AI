@@ -54,24 +54,24 @@ export const TodayCheckinCard: React.FC = () => {
   const moodOpt = todayEntry ? MOOD_OPTIONS.find((m) => m.value === todayEntry.mood) : null;
 
   return (
-    <Card className="border-teal-100 bg-gradient-to-r from-teal-50/60 via-background to-card overflow-hidden shadow-xs">
+    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-background to-card overflow-hidden shadow-xs">
       <CardContent className="p-5 sm:p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Left info */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-teal-100/70 text-teal-700">
+              <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <CalendarCheck className="w-4 h-4" />
               </span>
               <h3 className="font-bold text-base text-foreground">
                 {todayEntry ? "Today's Check-in Completed" : "Today's Wellness Check-in"}
               </h3>
               {todayEntry ? (
-                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs">
+                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs font-semibold">
                   <CheckCircle2 className="w-3 h-3 mr-1" /> Done Today
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-xs text-amber-700 bg-amber-50 border-amber-200">
+                <Badge variant="outline" className="text-xs text-amber-800 bg-amber-50 border-amber-200 font-semibold">
                   Pending Today
                 </Badge>
               )}
@@ -116,15 +116,15 @@ export const TodayCheckinCard: React.FC = () => {
                 size="sm"
                 className={
                   todayEntry
-                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/80 border text-xs"
-                    : "bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs shadow-xs"
+                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/80 border text-xs rounded-xl"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs shadow-xs rounded-xl"
                 }
               >
                 {todayEntry ? (
                   "Edit Check-in"
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-teal-200" />
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-primary-foreground/80" />
                     Check In (30s)
                     <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </>

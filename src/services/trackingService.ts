@@ -406,14 +406,39 @@ export async function unlockAchievement(
     return created;
   }
 
-  // Supabase insert with ignoreDuplicates on conflict (user_id, key)
+  // Check if achievement already unlocked (idempotent — preserves original unlocked_at timestamp)
+  const { data: existing, error: fetchError } = await supabase
+    .from("user_achievements")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("key", key)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.warn("[Tracking] Could not check existing achievement:", fetchError.message);
+  } else if (existing) {
+    return existing as UserAchievement;
+  }
+
+  // Insert newly unlocked achievement
   const { data, error } = await supabase
     .from("user_achievements")
-    .upsert({ user_id: userId, key, unlocked_at: nowIso }, { onConflict: "user_id,key" })
+    .insert({ user_id: userId, key, unlocked_at: nowIso })
     .select()
     .single();
 
   if (error) {
+    // If concurrent insert occurred, return the existing record
+    const { data: fallback } = await supabase
+      .from("user_achievements")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("key", key)
+      .maybeSingle();
+
+    if (fallback) {
+      return fallback as UserAchievement;
+    }
     throw new Error(error.message || "Failed to unlock achievement.");
   }
 

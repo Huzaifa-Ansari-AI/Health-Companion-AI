@@ -340,5 +340,74 @@ describe("trackingService - Validation & Local Storage Operations", () => {
       ).rejects.toThrow("Database connection failed");
     });
   });
+
+  describe("unlockAchievement - Idempotency & RLS-Safe Persistence", () => {
+    it("returns existing achievement idempotently without duplicate insert (Supabase mode)", async () => {
+      const existingAch = {
+        id: "ach-1",
+        user_id: "user-123",
+        key: "first_checkin",
+        unlocked_at: "2026-10-01T10:00:00.000Z",
+      };
+
+      const maybeSingleMock = vi.fn().mockResolvedValue({ data: existingAch, error: null });
+      const eqKeyMock = vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+      const eqUserMock = vi.fn().mockReturnValue({ eq: eqKeyMock });
+      const selectMock = vi.fn().mockReturnValue({ eq: eqUserMock });
+      const insertMock = vi.fn();
+
+      vi.spyOn(supabase, "from").mockReturnValue({
+        select: selectMock,
+        insert: insertMock,
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      const result = await unlockAchievement("user-123", "first_checkin", false);
+
+      expect(result).toEqual(existingAch);
+      expect(result.unlocked_at).toBe("2026-10-01T10:00:00.000Z");
+      expect(insertMock).not.toHaveBeenCalled();
+    });
+
+    it("inserts newly unlocked achievement when none exists (Supabase mode)", async () => {
+      const newlyCreated = {
+        id: "ach-new",
+        user_id: "user-123",
+        key: "streak_3",
+        unlocked_at: new Date().toISOString(),
+      };
+
+      const maybeSingleCheck = vi.fn().mockResolvedValue({ data: null, error: null });
+      const eqKeyCheck = vi.fn().mockReturnValue({ maybeSingle: maybeSingleCheck });
+      const eqUserCheck = vi.fn().mockReturnValue({ eq: eqKeyCheck });
+
+      const singleMock = vi.fn().mockResolvedValue({ data: newlyCreated, error: null });
+      const selectInsertMock = vi.fn().mockReturnValue({ single: singleMock });
+      const insertMock = vi.fn().mockReturnValue({ select: selectInsertMock });
+
+      vi.spyOn(supabase, "from").mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: eqUserCheck }),
+        insert: insertMock,
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      const result = await unlockAchievement("user-123", "streak_3", false);
+
+      expect(result).toEqual(newlyCreated);
+      expect(insertMock).toHaveBeenCalled();
+    });
+
+    it("is strictly idempotent in Demo mode across repeated invocations", async () => {
+      const first = await unlockAchievement("demo-user", "first_checkin", true);
+      const second = await unlockAchievement("demo-user", "first_checkin", true);
+
+      expect(first.key).toBe("first_checkin");
+      expect(second.key).toBe("first_checkin");
+      expect(first.id).toBe(second.id);
+      expect(first.unlocked_at).toBe(second.unlocked_at);
+
+      const all = await getUserAchievements("demo-user", true);
+      const firstCheckinCount = all.filter((a) => a.key === "first_checkin").length;
+      expect(firstCheckinCount).toBe(1);
+    });
+  });
 });
 

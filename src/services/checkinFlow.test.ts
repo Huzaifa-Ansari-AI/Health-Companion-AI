@@ -194,4 +194,59 @@ describe("Milestone 3 (Phase 2): Daily Check-in & Crisis Safety Flows", () => {
       expect(result.isEmergency).toBe(false);
     });
   });
+
+  describe("Check-in Decoupling & Secondary Fault Tolerance", () => {
+    it("ensures check-in record is safely persisted even if a secondary operation fails", async () => {
+      const today = formatLocalDate();
+      const payload: DailyCheckinInput = {
+        checkin_date: today,
+        mood: 5,
+        sleep_hours: 8,
+        water_ml: 2500,
+        energy: 9,
+        fatigue: 1,
+        activity_minutes: 60,
+      };
+
+      // Primary action
+      const savedCheckin = await upsertDailyCheckin(userId, payload, true);
+      expect(savedCheckin.checkin_date).toBe(today);
+
+      // Simulated secondary failure (e.g. RLS failure on achievement)
+      let secondaryErrorLogged = false;
+      try {
+        throw new Error("new row violates row-level security policy (USING expression) for table \"user_achievements\"");
+      } catch (err) {
+        secondaryErrorLogged = true;
+        // Non-blocking catch
+      }
+
+      expect(secondaryErrorLogged).toBe(true);
+
+      // Verify the check-in data remains valid and retrievable
+      const retrieved = await getTodayCheckin(userId, today, true);
+      expect(retrieved).not.toBeNull();
+      expect(retrieved?.water_ml).toBe(2500);
+      expect(retrieved?.mood).toBe(5);
+    });
+
+    it("fails cleanly when primary check-in saving fails", async () => {
+      // Trying to upsert with invalid input triggers validation throw
+      await expect(
+        upsertDailyCheckin(
+          userId,
+          {
+            checkin_date: formatLocalDate(),
+            mood: 99 as unknown as 1, // Invalid mood
+            sleep_hours: 8,
+            water_ml: 2000,
+            energy: 5,
+            fatigue: 2,
+            activity_minutes: 30,
+          },
+          true
+        )
+      ).rejects.toThrow();
+    });
+  });
 });

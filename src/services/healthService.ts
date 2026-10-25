@@ -1,5 +1,11 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { HealthAssessmentSummary } from "@/types/chat";
+import { parseEdgeFunctionError } from "./aiErrorHelper";
+import {
+  DynamicRiskIndicator,
+  HealthAnalysisResult,
+  validateHealthAnalysisOutput,
+} from "@/lib/aiValidation";
 
 export interface AssessmentLifestyleData {
   age?: number;
@@ -19,6 +25,7 @@ export interface AssessmentLifestyleData {
   custom_symptoms?: string;
   custom_habits?: string;
   custom_family_history?: string;
+  assessment_mode?: "offline" | "online";
   [key: string]: unknown;
 }
 
@@ -85,9 +92,10 @@ export function calculateBMI(heightCm: number, weightKg: number): { bmi: number;
   const bmi = Number((weightKg / (heightM * heightM)).toFixed(1));
 
   let category = "Normal weight";
-  if (bmi < 18.5) category = "Underweight";
-  else if (bmi < 25) category = "Normal weight";
-  else if (bmi < 30) category = "Overweight";
+  if (bmi < 16.0) category = "Severe Thinness";
+  else if (bmi < 18.5) category = "Underweight";
+  else if (bmi < 25.0) category = "Normal weight";
+  else if (bmi < 30.0) category = "Overweight";
   else category = "Obesity";
 
   return { bmi, category };
@@ -149,14 +157,18 @@ export async function saveAssessment(
   record: Omit<AssessmentRecord, "id" | "created_at">,
   isDemo = false
 ): Promise<AssessmentRecord> {
+  const isGuestDemo = Boolean(
+    isDemo && (!record.user_id || record.user_id === "demo" || record.user_id.startsWith("demo-"))
+  );
+
   const fullRecord: AssessmentRecord = {
     ...record,
-    id: isDemo ? `demo-${Date.now()}` : undefined,
+    id: isGuestDemo ? `demo-${Date.now()}` : undefined,
     created_at: new Date().toISOString(),
   };
 
-  if (isDemo || !isSupabaseConfigured) {
-    const current = await fetchUserAssessments("demo", true);
+  if (isGuestDemo || !isSupabaseConfigured) {
+    const current = await fetchUserAssessments(record.user_id || "demo", true);
     const updated = [fullRecord, ...current];
     localStorage.setItem(DEMO_ASSESSMENTS_KEY, JSON.stringify(updated));
     return fullRecord;
@@ -189,6 +201,58 @@ export async function saveAssessment(
   }
 
   return data;
+}
+
+/**
+ * Deletes a health assessment by ID.
+ * In demo mode: removes from localStorage and cleans up associated demo shares.
+ * In authenticated mode: deletes from Supabase health_assessments (cascades to report_shares).
+ */
+export async function deleteAssessment(
+  assessmentId: string,
+  isDemo = false
+): Promise<void> {
+  if (!assessmentId) {
+    throw new Error("Assessment ID is required for deletion.");
+  }
+
+  if (isDemo || !isSupabaseConfigured) {
+    const raw = localStorage.getItem(DEMO_ASSESSMENTS_KEY);
+    if (raw) {
+      try {
+        const records: AssessmentRecord[] = JSON.parse(raw);
+        const filtered = records.filter((r) => r.id !== assessmentId);
+        localStorage.setItem(DEMO_ASSESSMENTS_KEY, JSON.stringify(filtered));
+      } catch {
+        // Fallback
+      }
+    }
+
+    // Also clean up any associated demo share records
+    try {
+      const sharesRaw = localStorage.getItem("healthai_demo_shares");
+      if (sharesRaw) {
+        const shares = JSON.parse(sharesRaw);
+        if (Array.isArray(shares)) {
+          const remainingShares = shares.filter((s: { assessment_id: string }) => s.assessment_id !== assessmentId);
+          localStorage.setItem("healthai_demo_shares", JSON.stringify(remainingShares));
+        }
+      }
+    } catch {
+      // Non-blocking
+    }
+    return;
+  }
+
+  const { error } = await supabase
+    .from("health_assessments")
+    .delete()
+    .eq("id", assessmentId);
+
+  if (error) {
+    console.error("Error deleting assessment from Supabase:", error);
+    throw new Error(error.message || "Failed to delete assessment from database.");
+  }
 }
 
 /**
@@ -247,11 +311,25 @@ export function generateDemoHealthAnalysis(record: AssessmentRecord): HealthAnal
       rationale: `BMI of ${bmi} falls in the obesity category, placing increased long-term strain on glycemic regulation and cardiovascular circulation.`,
       icon_name: "Scale",
     });
+  } else if (bmiCategory === "Severe Thinness") {
+    risks.push({
+      condition: "Nutritional Deficit & Underweight Strain",
+      risk_level: "High",
+      rationale: `BMI of ${bmi} reflects severe thinness (< 16.0), indicating heightened physiological vulnerability and potential nutritional deficiency.`,
+      icon_name: "Scale",
+    });
   } else if (bmiCategory === "Overweight") {
     risks.push({
       condition: "Weight & Metabolic Profile",
       risk_level: "Medium",
       rationale: `BMI of ${bmi} indicates moderate excess weight, which can contribute to joint and cardiovascular strain over time.`,
+      icon_name: "Scale",
+    });
+  } else if (bmiCategory === "Underweight") {
+    risks.push({
+      condition: "Low Body Weight",
+      risk_level: "Medium",
+      rationale: `BMI of ${bmi} indicates lower body weight, which may benefit from targeted nutritional density.`,
       icon_name: "Scale",
     });
   }
@@ -358,6 +436,10 @@ export function generateDemoHealthAnalysis(record: AssessmentRecord): HealthAnal
   }
   if (bmiCategory === "Obesity" || bmiCategory === "Overweight") {
     recommendations.push("Work with a dietitian on a calorie-conscious, whole-food nutritional plan rich in dietary fiber.");
+  } else if (bmiCategory === "Severe Thinness") {
+    recommendations.push("Consult a healthcare provider or nutritionist promptly for a safe weight restoration and nutritional recovery plan.");
+  } else if (bmiCategory === "Underweight") {
+    recommendations.push("Consult a nutritionist to incorporate nutrient-dense whole foods to reach a healthy weight.");
   }
   if (hasSubstances) {
     recommendations.push("Explore supportive cessation resources to reduce tobacco and chemical oral substance exposure.");
@@ -401,18 +483,27 @@ export async function analyzeHealthAssessment(
     });
 
     if (error) {
-      throw new Error(`Assessment analysis failed: ${error.message}`);
+      const parsed = await parseEdgeFunctionError(error, data);
+      throw new Error(`Assessment analysis failed: ${parsed.userMessage}`);
+    }
+
+    if (data?.error) {
+      const parsed = await parseEdgeFunctionError(null, data);
+      throw new Error(`Assessment analysis failed: ${parsed.userMessage}`);
     }
 
     const validated = validateHealthAnalysisOutput(data);
     if (!validated) {
-      return generateDemoHealthAnalysis(record);
+      throw new Error("AI assessment response failed schema validation. Please retry.");
     }
 
     return validated;
-  } catch {
-    // Resilient fallback to deterministic generator if network or Edge Function fails
-    return generateDemoHealthAnalysis(record);
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Failed to communicate with AI health assessment engine";
+    throw new Error(message);
   }
 }
 
