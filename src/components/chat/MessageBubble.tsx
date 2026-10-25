@@ -88,7 +88,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       >
         <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-current/10">
           <span className="text-xs font-semibold opacity-90">
-            {isUser ? "You" : "Health Companion"}
+            {isUser ? "You" : "Afiyat AI"}
           </span>
 
           <div className="flex items-center gap-1.5">

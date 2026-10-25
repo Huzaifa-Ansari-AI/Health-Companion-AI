@@ -121,14 +121,31 @@ STRICT SAFETY RULES:
 
     if (geminiKey) {
       try {
+        const cleanedKey = geminiKey.trim().replace(/^["']+|["']+$/g, "");
+        const rawModel = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
+        const geminiModel = rawModel.trim().replace(/^["']+|["']+$/g, "").replace(/^models\//, "") || "gemini-3.5-flash";
+        const supportsThinking =
+          geminiModel.toLowerCase().includes("thinking") ||
+          geminiModel.toLowerCase().includes("gemini-2.5") ||
+          geminiModel.toLowerCase().includes("gemini-3.");
+
+        const genConfig: Record<string, unknown> = {
+          responseMimeType: "application/json",
+          temperature: 0.2,
+        };
+        if (supportsThinking) {
+          genConfig.thinkingConfig = { thinkingBudget: 0 };
+        }
+
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${cleanedKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(15000),
             body: JSON.stringify({
               contents: [{ role: "user", parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+              generationConfig: genConfig,
             }),
           }
         );

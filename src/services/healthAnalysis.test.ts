@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   generateDemoHealthAnalysis,
   analyzeHealthAssessment,
@@ -223,5 +223,77 @@ describe("Phase 4: LLM Dynamic Health Risk Assessment", () => {
       expect(result.risks.length).toBeGreaterThanOrEqual(1);
       expect(result.disclaimer).toContain("not a medical diagnosis");
     });
+
+    it("successfully invokes analyze-health in online mode (isDemo = false) and parses validated output", async () => {
+      const { supabase } = await import("@/lib/supabase");
+      const invokeSpy = vi.spyOn(supabase.functions, "invoke").mockResolvedValueOnce({
+        data: {
+          overall_risk_level: "Medium",
+          summary: "AI evaluated moderate metabolic and sleep indicators.",
+          risks: [
+            {
+              condition: "Sleep & Circadian Rhythm",
+              risk_level: "Medium",
+              rationale: "Reported 5 hours of sleep nightly increases cortisol.",
+              icon_name: "Moon",
+            },
+          ],
+          recommendations: ["Target 7-8 hours of sleep."],
+          disclaimer: "This is not a medical diagnosis. Please consult a qualified healthcare professional.",
+        },
+        error: null,
+      });
+
+      const record: AssessmentRecord = {
+        height_cm: 175,
+        weight_kg: 70,
+        bmi: 22.9,
+        bmi_category: "Normal weight",
+        symptoms: [],
+        risk_level: "Low",
+        ai_summary: "",
+        recommendations: [],
+        disclaimer: "This is not a medical diagnosis.",
+      };
+
+      const result = await analyzeHealthAssessment(record, false);
+      expect(result).toBeDefined();
+      expect(result.overall_risk_level).toBe("Medium");
+      expect(result.summary).toContain("AI evaluated moderate metabolic");
+      expect(result.risks).toHaveLength(1);
+      expect(result.risks[0].condition).toBe("Sleep & Circadian Rhythm");
+
+      invokeSpy.mockRestore();
+    });
+
+    it("throws an explicit error when online mode response fails schema validation", async () => {
+      const { supabase } = await import("@/lib/supabase");
+      const invokeSpy = vi.spyOn(supabase.functions, "invoke").mockResolvedValueOnce({
+        data: {
+          // Missing summary and invalid overall_risk_level
+          overall_risk_level: "Extreme",
+        },
+        error: null,
+      });
+
+      const record: AssessmentRecord = {
+        height_cm: 175,
+        weight_kg: 70,
+        bmi: 22.9,
+        bmi_category: "Normal weight",
+        symptoms: [],
+        risk_level: "Low",
+        ai_summary: "",
+        recommendations: [],
+        disclaimer: "This is not a medical diagnosis.",
+      };
+
+      await expect(analyzeHealthAssessment(record, false)).rejects.toThrow(
+        "AI assessment response failed schema validation"
+      );
+
+      invokeSpy.mockRestore();
+    });
   });
 });
+

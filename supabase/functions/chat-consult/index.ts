@@ -1,12 +1,20 @@
 // Supabase Edge Function: chat-consult
 // Milestone 1 - Interactive AI Symptom Consultation Chatbot Engine
-// Enforces JWT verification, rate limiting, emergency detection, untrusted input sanitization, and structured AI response.
+// Enforces JWT verification, rate limiting, emergency detection, untrusted input sanitization,
+// structured AI consultation, real-time connectivity diagnostics, and AI summary synthesis.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "../_shared/emergencyDetector.ts";
 import { buildConsultSystemPrompt } from "../_shared/prompts/consultPrompt.ts";
-import { invokeLLM, LLMMessage, ValidatedConsultOutput, testAiConnection } from "../_shared/aiAdapter.ts";
+import {
+  invokeLLM,
+  invokeConsultSummary,
+  LLMMessage,
+  ValidatedConsultOutput,
+  testAiConnection,
+  AiServiceError,
+} from "../_shared/aiAdapter.ts";
 import { formatProfileContext } from "../_shared/profileContextBuilder.ts";
 
 const corsHeaders = {
@@ -17,7 +25,7 @@ const corsHeaders = {
 // In-memory rate limiting map: user_id -> timestamp array
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 20;
+const MAX_REQUESTS_PER_WINDOW = 25; // 25 requests per minute
 
 function checkRateLimit(userId: string): boolean {
   const now = Date.now();
@@ -43,10 +51,17 @@ serve(async (req: Request) => {
     // 2. JWT Verification
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "auth_invalid",
+          category: "auth_invalid",
+          message: "Missing authorization header",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -61,10 +76,17 @@ serve(async (req: Request) => {
     } = await supabaseClient.auth.getUser();
 
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized: Invalid or expired token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "auth_invalid",
+          category: "auth_invalid",
+          message: "Unauthorized: Invalid or expired token",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Parse payload
@@ -79,10 +101,15 @@ serve(async (req: Request) => {
       });
     }
 
-    // 3. Rate Limit Enforcement
+    // Rate Limit Enforcement
     if (!checkRateLimit(user.id)) {
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Please wait a minute before sending more messages." }),
+        JSON.stringify({
+          error: "rate_limited",
+          category: "rate_limited",
+          message: "Rate limit exceeded. Please wait a minute before sending more messages.",
+          retry_after: 60,
+        }),
         {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -90,42 +117,258 @@ serve(async (req: Request) => {
       );
     }
 
-    // 4. Request Payload Validation
-    const sessionId = body?.session_id;
-    const rawMessage = body?.message;
+    // Summarize Action: Generates AI-synthesized Health Assessment Summary from consultation transcript
+    if (body?.action === "summarize") {
+      const sessionId = body?.session_id;
+      if (!sessionId || typeof sessionId !== "string") {
+        return new Response(
+          JSON.stringify({
+            error: "bad_request",
+            category: "bad_request",
+            message: "Invalid or missing session_id",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
 
-    if (!sessionId || typeof sessionId !== "string") {
-      return new Response(JSON.stringify({ error: "Invalid or missing session_id" }), {
-        status: 400,
+      // Fetch chat transcript for this session
+      const { data: messages, error: msgErr } = await supabaseClient
+        .from("chat_messages")
+        .select("role, content, metadata, created_at")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+
+      if (msgErr || !messages || messages.length === 0) {
+        return new Response(
+          JSON.stringify({
+            has_sufficient_info: false,
+            symptoms: [],
+            duration: "",
+            intensity: "",
+            likely_conditions: [],
+            lifestyle_factors: [],
+            risk_level: null,
+            summary: "No consultation messages found for this session.",
+            recommendations: [],
+            doctor_questions: [],
+            red_flags: [],
+            disclaimer:
+              "This is not a medical diagnosis. It is general wellness guidance. Please consult a qualified healthcare professional.",
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Non-symptom classifier for filtering greetings, chips, and meta questions
+      const isNonSymptom = (text: string): boolean => {
+        const clean = text.toLowerCase().trim();
+        if (clean.length < 3) return true;
+        const nonSymptomPatterns = [
+          "hi",
+          "hello",
+          "hey",
+          "assalam",
+          "assalamualaikum",
+          "aoa",
+          "salam",
+          "good morning",
+          "good evening",
+          "good afternoon",
+          "thank you",
+          "thanks",
+          "shukriya",
+          "who are you",
+          "what is my name",
+          "what is your name",
+          "tell me about yourself",
+          "tell me about yourself and your features",
+          "what can you do",
+          "help",
+          "check a symptom",
+          "advice on sleep",
+          "help with stress",
+          "a bit of both",
+          "i want advice on sleep or stress",
+          "frequent headaches",
+          "sleep issues",
+          "digestive problems",
+          "fatigue",
+          "stress and anxiety",
+          "general wellness inquiry",
+        ];
+        return nonSymptomPatterns.some(
+          (p) => clean === p || clean.startsWith(p + " ") || clean.endsWith(" " + p)
+        );
+      };
+
+      const substantiveUserMsgs = messages.filter(
+        (m: { role: string; content: string }) => m.role === "user" && !isNonSymptom(m.content)
+      );
+
+      // If user never described real symptoms, return insufficient information state
+      if (substantiveUserMsgs.length === 0) {
+        return new Response(
+          JSON.stringify({
+            has_sufficient_info: false,
+            symptoms: [],
+            duration: "",
+            intensity: "",
+            likely_conditions: [],
+            lifestyle_factors: [],
+            risk_level: null,
+            summary:
+              "No specific symptoms were reported during this consultation. Tell the AI more about your symptoms to generate a summary.",
+            recommendations: [
+              "Describe specific physical symptoms you are experiencing, such as headache, fever, or joint pain.",
+              "Mention how long you have felt them and their intensity (mild, moderate, or severe).",
+            ],
+            doctor_questions: [],
+            red_flags: [],
+            disclaimer:
+              "This is not a medical diagnosis. It is general wellness guidance. Please consult a qualified healthcare professional.",
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Load profile context (if consent granted)
+      let profileContextPrompt = "";
+      try {
+        const { data: consentRecords } = await supabaseClient
+          .from("privacy_consents")
+          .select("consent_type, granted")
+          .eq("user_id", user.id)
+          .eq("consent_type", "ai_profile_context")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (consentRecords && consentRecords[0]?.granted) {
+          const [profileRes, allergiesRes, conditionsRes, medsRes, familyRes] =
+            await Promise.all([
+              supabaseClient
+                .from("health_profiles")
+                .select("age, gender, date_of_birth")
+                .eq("user_id", user.id)
+                .maybeSingle(),
+              supabaseClient
+                .from("profile_allergies")
+                .select("name, severity")
+                .eq("user_id", user.id),
+              supabaseClient
+                .from("profile_conditions")
+                .select("name, status")
+                .eq("user_id", user.id)
+                .neq("status", "past"),
+              supabaseClient
+                .from("profile_medications")
+                .select("name")
+                .eq("user_id", user.id)
+                .eq("is_current", true),
+              supabaseClient
+                .from("profile_family_history")
+                .select("condition_name, relation")
+                .eq("user_id", user.id),
+            ]);
+
+          profileContextPrompt = formatProfileContext({
+            age: profileRes?.data?.age,
+            gender: profileRes?.data?.gender,
+            date_of_birth: profileRes?.data?.date_of_birth,
+            allergies: allergiesRes?.data || [],
+            conditions: conditionsRes?.data || [],
+            medications: medsRes?.data || [],
+            familyHistory: familyRes?.data || [],
+          });
+        }
+      } catch {
+        // Safe non-blocking fallback
+      }
+
+      const transcript = messages
+        .map(
+          (m: { role: string; content: string }) =>
+            `${m.role === "user" ? "Patient" : "AI Assistant"}: ${m.content}`
+        )
+        .join("\n\n");
+
+      const summaryOutput = await invokeConsultSummary(transcript, profileContextPrompt);
+
+      return new Response(JSON.stringify(summaryOutput), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // 4. Request Payload Validation (Regular Chat Message)
+    const sessionId = body?.session_id;
+    const rawMessage = body?.message;
+
+    if (!sessionId || typeof sessionId !== "string") {
+      return new Response(
+        JSON.stringify({
+          error: "bad_request",
+          category: "bad_request",
+          message: "Invalid or missing session_id",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     if (!rawMessage || typeof rawMessage !== "string") {
-      return new Response(JSON.stringify({ error: "Invalid or missing message" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "bad_request",
+          category: "bad_request",
+          message: "Invalid or missing message",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Sanitize and limit input length (max 2000 characters)
     const sanitizedMessage = rawMessage.trim().slice(0, 2000);
     if (sanitizedMessage.length === 0) {
-      return new Response(JSON.stringify({ error: "Message cannot be empty" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "bad_request",
+          category: "bad_request",
+          message: "Message cannot be empty",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // 5. Emergency Detection Layer (Evaluated BEFORE any LLM call)
     const emergencyCheck = detectEmergency(sanitizedMessage);
 
     if (emergencyCheck.isEmergency) {
-      const isTerminalDistress = emergencyCheck.matchedCategory === "Critical/Terminal Distress & Severe Oncology";
+      const isTerminalDistress =
+        emergencyCheck.matchedCategory ===
+        "Critical/Terminal Distress & Severe Oncology";
 
       const emergencyReply: ValidatedConsultOutput = {
         reply: emergencyCheck.emergencyAdvice || EMERGENCY_DISCLAIMER_MESSAGE,
-        suggested_title: isTerminalDistress ? "Oncology & Palliative Care" : "Emergency Consultation",
+        suggested_title: isTerminalDistress
+          ? "Oncology & Palliative Care"
+          : "Emergency Consultation",
         risk_level: isTerminalDistress ? null : "High",
         emergency: true,
         suggested_replies: isTerminalDistress
@@ -140,10 +383,17 @@ serve(async (req: Request) => {
               "What can I do while waiting?",
             ],
         extracted: {
-          symptoms: [emergencyCheck.triggerPhrase || (isTerminalDistress ? "Advanced oncology / serious illness" : "emergency symptom")],
+          symptoms: [
+            emergencyCheck.triggerPhrase ||
+              (isTerminalDistress
+                ? "Advanced oncology / serious illness"
+                : "emergency symptom"),
+          ],
           duration: isTerminalDistress ? "Advanced / Ongoing" : "Immediate",
           intensity: "Severe",
-          lifestyle: isTerminalDistress ? "Palliative and oncology team support" : "",
+          lifestyle: isTerminalDistress
+            ? "Palliative and oncology team support"
+            : "",
         },
       };
 
@@ -179,7 +429,10 @@ serve(async (req: Request) => {
       } else {
         await supabaseClient
           .from("chat_sessions")
-          .update({ title: "Oncology & Palliative Care", updated_at: new Date().toISOString() })
+          .update({
+            title: "Oncology & Palliative Care",
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", sessionId);
       }
 
@@ -220,7 +473,10 @@ serve(async (req: Request) => {
       const older = rawHistory.slice(0, rawHistory.length - 6);
       const recent = rawHistory.slice(rawHistory.length - 6);
       const condensedSummary = older
-        .map((m: { role: string; content: string }) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content.slice(0, 120)}`)
+        .map(
+          (m: { role: string; content: string }) =>
+            `${m.role === "user" ? "User" : "Assistant"}: ${m.content.slice(0, 120)}`
+        )
         .join(" | ");
 
       contextMessages = [
@@ -230,7 +486,8 @@ serve(async (req: Request) => {
         },
         {
           role: "assistant",
-          content: "I understand the prior context of our consultation. Let's continue.",
+          content:
+            "I understand the prior context of our consultation. Let's continue.",
         },
         ...recent.map((m: { role: string; content: string }) => ({
           role: m.role as "user" | "assistant",
@@ -252,16 +509,37 @@ serve(async (req: Request) => {
         .order("created_at", { ascending: false })
         .limit(1);
 
-      const hasConsent = Boolean(consentRecords && consentRecords.length > 0 && consentRecords[0].granted);
+      const hasConsent = Boolean(
+        consentRecords && consentRecords.length > 0 && consentRecords[0].granted
+      );
 
       if (hasConsent) {
-        const [profileRes, allergiesRes, conditionsRes, medsRes, familyRes] = await Promise.all([
-          supabaseClient.from("health_profiles").select("age, gender, date_of_birth").eq("user_id", user.id).maybeSingle(),
-          supabaseClient.from("profile_allergies").select("name, severity").eq("user_id", user.id),
-          supabaseClient.from("profile_conditions").select("name, status").eq("user_id", user.id).neq("status", "past"),
-          supabaseClient.from("profile_medications").select("name").eq("user_id", user.id).eq("is_current", true),
-          supabaseClient.from("profile_family_history").select("condition_name, relation").eq("user_id", user.id),
-        ]);
+        const [profileRes, allergiesRes, conditionsRes, medsRes, familyRes] =
+          await Promise.all([
+            supabaseClient
+              .from("health_profiles")
+              .select("age, gender, date_of_birth")
+              .eq("user_id", user.id)
+              .maybeSingle(),
+            supabaseClient
+              .from("profile_allergies")
+              .select("name, severity")
+              .eq("user_id", user.id),
+            supabaseClient
+              .from("profile_conditions")
+              .select("name, status")
+              .eq("user_id", user.id)
+              .neq("status", "past"),
+            supabaseClient
+              .from("profile_medications")
+              .select("name")
+              .eq("user_id", user.id)
+              .eq("is_current", true),
+            supabaseClient
+              .from("profile_family_history")
+              .select("condition_name, relation")
+              .eq("user_id", user.id),
+          ]);
 
         profileContextPrompt = formatProfileContext({
           age: profileRes?.data?.age,
@@ -283,7 +561,7 @@ serve(async (req: Request) => {
 
     const systemPrompt = buildConsultSystemPrompt(profileContextPrompt);
 
-    // 9. Invoke AI via Provider Adapter (Throws on failure, no silent mock fallback)
+    // 9. Invoke AI via Provider Adapter
     const aiOutput = await invokeLLM(systemPrompt, contextMessages);
     aiOutput.personalized = isPersonalized;
 
@@ -308,13 +586,19 @@ serve(async (req: Request) => {
     if (aiOutput.risk_level) {
       await supabaseClient
         .from("chat_sessions")
-        .update({ risk_level: aiOutput.risk_level, updated_at: new Date().toISOString() })
+        .update({
+          risk_level: aiOutput.risk_level,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", sessionId);
     }
 
     // Auto-update session title if suggested and session has default title
     if (aiOutput.suggested_title && aiOutput.suggested_title.trim().length > 0) {
-      const cleanTitle = aiOutput.suggested_title.trim().replace(/^["']|["']$/g, "").slice(0, 50);
+      const cleanTitle = aiOutput.suggested_title
+        .trim()
+        .replace(/^["']|["']$/g, "")
+        .slice(0, 50);
       if (cleanTitle && cleanTitle.toLowerCase() !== "health consultation") {
         const { data: currentSession } = await supabaseClient
           .from("chat_sessions")
@@ -341,12 +625,32 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal consultation engine error";
-    // Return explicit 503 Service Unavailable so client can show clear retry UI
+    if (err instanceof AiServiceError) {
+      return new Response(
+        JSON.stringify({
+          error: err.category,
+          category: err.category,
+          message: err.userMessage,
+          details: err.message,
+          retry_after: err.retryAfter,
+          model: err.model,
+          latencyMs: err.latencyMs,
+        }),
+        {
+          status: err.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const message =
+      err instanceof Error ? err.message : "Internal consultation engine error";
     return new Response(
       JSON.stringify({
-        error: "AI_UNAVAILABLE",
-        message: "The AI consultation service is temporarily unavailable. Please verify the AI configuration or retry shortly.",
+        error: "internal",
+        category: "internal",
+        message:
+          "The AI consultation service is temporarily unavailable. Please verify the AI configuration or retry shortly.",
         details: message,
       }),
       {
@@ -356,4 +660,3 @@ serve(async (req: Request) => {
     );
   }
 });
-

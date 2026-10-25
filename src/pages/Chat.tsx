@@ -20,10 +20,10 @@ import { SessionList } from "@/components/chat/SessionList";
 import { HealthSummaryDialog } from "@/components/chat/HealthSummaryDialog";
 import { AiDiagnosticDialog } from "@/components/chat/AiDiagnosticDialog";
 import { AiMemoryDialog } from "@/components/chat/AiMemoryDialog";
+import { AfiyatLogo } from "@/components/common/AfiyatLogo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  Heart,
   ArrowLeft,
   Menu,
   FileText,
@@ -247,92 +247,94 @@ const Chat: React.FC = () => {
       <DisclaimerBar />
 
       {/* 2. Top Chat Header */}
-      <header className="h-14 border-b border-border/70 bg-card/80 backdrop-blur-xs px-4 flex items-center justify-between shrink-0 z-30">
-        <div className="flex items-center gap-3">
+      <header className="h-14 border-b border-border/70 bg-card/80 backdrop-blur-xs px-3 sm:px-4 flex items-center justify-between shrink-0 z-30 gap-2">
+        {/* Left Side: Back to Dashboard & Afiyat Emblem Mark */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/dashboard")}
-            className="h-8 px-2 gap-1.5 text-muted-foreground hover:text-foreground -ml-1 rounded-xl"
+            className="h-8 px-2.5 gap-1.5 text-muted-foreground hover:text-foreground -ml-1 rounded-xl"
             title="Return to Dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">Dashboard</span>
+            <span className="font-medium text-xs">Dashboard</span>
           </Button>
 
-          <div className="h-4 w-px bg-border/60 hidden sm:block" />
-
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              <Heart className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm font-semibold truncate max-w-[180px] sm:max-w-[320px]">
-                {activeSession ? activeSession.title : "Health Consultation"}
-              </h1>
-            </div>
+          <div className="hidden sm:flex items-center pl-1 border-l border-border/60">
+            <AfiyatLogo variant="mark" size="xs" linkTo="/" />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* AI Connection Diagnostics Shortcut */}
+        {/* Center: Exactly 4 Primary Navigation Tabs */}
+        <div className="hidden md:flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/50">
+          {/* Tab 1: AI Diagnostics */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setDiagnosticModalOpen(true)}
-            className="h-8 px-2 gap-1.5 text-muted-foreground hover:text-foreground rounded-xl hidden sm:flex text-xs"
+            className="h-7 px-2.5 gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs font-medium hover:bg-background shadow-none"
             title="Run Real-Time AI Connection Diagnostics"
           >
             <Activity className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden lg:inline">AI Diagnostics</span>
+            <span>AI Diagnostics</span>
           </Button>
 
-          {/* AI Memory Transparency Shortcut */}
+          {/* Tab 2: AI Memory */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setMemoryModalOpen(true)}
-            className="h-8 px-2 gap-1.5 text-muted-foreground hover:text-foreground rounded-xl hidden sm:flex text-xs"
+            className="h-7 px-2.5 gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs font-medium hover:bg-background shadow-none"
             title="View what the AI knows about you"
           >
             <Brain className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden md:inline">AI Memory</span>
+            <span>AI Memory</span>
           </Button>
 
-          {/* Health Profile Shortcut */}
+          {/* Tab 3: Profile & Consents */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/profile")}
-            className="h-8 px-2 gap-1.5 text-muted-foreground hover:text-foreground rounded-xl hidden sm:flex text-xs"
+            className="h-7 px-2.5 gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs font-medium hover:bg-background shadow-none"
             title="Configure Health Profile & Privacy Consents"
           >
-            <User className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Profile & Consents</span>
+            <User className="w-3.5 h-3.5 text-primary" />
+            <span>Profile & Consents</span>
           </Button>
 
-          {/* Generate Summary CTA */}
+          {/* Tab 4: Health Summary */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleOpenSummary}
             disabled={messages.length < 2 || isGeneratingSummary}
-            className="h-8 gap-1.5 text-xs rounded-xl shadow-2xs font-normal"
+            className={`h-7 px-2.5 gap-1.5 rounded-lg text-xs font-medium transition-all ${
+              messages.length >= 2
+                ? "text-primary hover:bg-primary/10"
+                : "text-muted-foreground/60 hover:bg-transparent"
+            }`}
+            title="Synthesize and save assessment summary"
           >
             <FileText className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden sm:inline">
+            <span>
               {isGeneratingSummary ? "Synthesizing..." : isAlreadySaved ? "View Summary" : "Health Summary"}
             </span>
           </Button>
+        </div>
 
+        {/* Right Side: Mobile Controls + Secondary New Chat button */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Mobile Drawer Trigger for Sessions */}
           <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 w-8 p-0 rounded-xl md:hidden shrink-0"
+                className="h-8 w-8 p-0 rounded-xl md:hidden shrink-0 border-border/80"
                 aria-label="Open sessions sidebar"
+                title="View Consultation History"
               >
                 <Menu className="w-4 h-4" />
               </Button>
@@ -350,15 +352,29 @@ const Chat: React.FC = () => {
             </SheetContent>
           </Sheet>
 
-          {/* New Chat desktop shortcut */}
+          {/* Mobile Quick Summary Icon Button */}
           <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenSummary}
+            disabled={messages.length < 2 || isGeneratingSummary}
+            className="h-8 w-8 p-0 rounded-xl md:hidden shrink-0 border-border/80"
+            title="Health Summary"
+          >
+            <FileText className="w-4 h-4 text-primary" />
+          </Button>
+
+          {/* Secondary Action: New Chat Button */}
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleNewSession}
             disabled={createSessionMutation.isPending}
-            className="h-8 gap-1.5 rounded-xl px-2.5 text-xs shadow-2xs hidden md:flex font-medium"
+            className="h-8 gap-1.5 rounded-xl px-2.5 text-xs font-medium border-border/80 hover:border-primary/50 text-foreground"
+            title="Start New Consultation"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Chat</span>
+            <Plus className="w-3.5 h-3.5 text-primary" />
+            <span className="hidden sm:inline">New Chat</span>
           </Button>
         </div>
       </header>

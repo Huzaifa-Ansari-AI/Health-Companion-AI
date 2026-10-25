@@ -143,7 +143,19 @@ export function validateHealthAnalysisOutput(rawJson: unknown): HealthAnalysisRe
   if (!rawJson || typeof rawJson !== "object") return null;
   const parsed = HealthAnalysisSchema.safeParse(rawJson);
   if (!parsed.success) return null;
-  return parsed.data;
+  const data = parsed.data;
+  return {
+    overall_risk_level: data.overall_risk_level,
+    summary: data.summary,
+    risks: (data.risks || []).map((r) => ({
+      condition: r.condition,
+      risk_level: r.risk_level,
+      rationale: r.rationale,
+      icon_name: r.icon_name || "Activity",
+    })),
+    recommendations: data.recommendations || [],
+    disclaimer: data.disclaimer,
+  };
 }
 
 

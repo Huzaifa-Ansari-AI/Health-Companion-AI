@@ -113,24 +113,74 @@ export const AiDiagnosticDialog: React.FC<AiDiagnosticDialogProps> = ({
 
               <p className="text-xs opacity-90 leading-relaxed">{result.message}</p>
 
-              {result.ok && (
-                <div className="pt-2 border-t border-emerald-500/20 flex items-center justify-between text-2xs opacity-80 font-mono">
-                  <span>Model: {result.model || "gemini-1.5-flash"}</span>
-                  <span className="flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                    {result.latencyMs}ms
-                  </span>
-                </div>
-              )}
+              {/* Model & Latency Telemetry */}
+              <div
+                className={`pt-2 border-t flex items-center justify-between text-2xs font-mono opacity-85 ${
+                  result.ok ? "border-emerald-500/20" : "border-destructive/20"
+                }`}
+              >
+                <span>Model: {result.model || "gemini-3.5-flash"}</span>
+                <span className="flex items-center gap-1">
+                  <Zap className={`w-3 h-3 ${result.ok ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`} />
+                  {result.latencyMs ?? 0}ms
+                </span>
+              </div>
 
+              {/* Resolution Instructions */}
               {!result.ok && !isDemo && (
-                <div className="pt-2 border-t border-destructive/20 text-2xs opacity-90 space-y-1">
-                  <span className="font-semibold block">How to resolve:</span>
-                  <ol className="list-decimal list-inside space-y-0.5 pl-1">
-                    <li>Open your Supabase Project Dashboard.</li>
-                    <li>Go to Edge Functions &gt; Manage Secrets.</li>
-                    <li>Add secret <code className="font-mono bg-destructive/10 px-1 rounded">GEMINI_API_KEY</code>.</li>
-                  </ol>
+                <div className="pt-2 border-t border-destructive/20 text-2xs opacity-90 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">How to resolve:</span>
+                    {result.category && (
+                      <span className="font-mono text-3xs uppercase px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-semibold">
+                        {result.category}
+                      </span>
+                    )}
+                  </div>
+                  {result.category === "key_missing" ? (
+                    <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                      <li>Open your Supabase Project Dashboard.</li>
+                      <li>Go to Edge Functions &gt; Manage Secrets.</li>
+                      <li>Add secret <code className="font-mono bg-destructive/10 px-1 rounded">GEMINI_API_KEY</code>.</li>
+                    </ol>
+                  ) : result.category === "model_not_found" ? (
+                    <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                      <li>Open your Supabase Project Dashboard &gt; Edge Functions &gt; Manage Secrets.</li>
+                      <li>Update <code className="font-mono bg-destructive/10 px-1 rounded">GEMINI_MODEL</code> to an active model (e.g. <code className="font-mono">gemini-3.5-flash</code>).</li>
+                      <li>Save and retry the diagnostic test.</li>
+                    </ol>
+                  ) : result.category === "rate_limited" ? (
+                    <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                      <li>Wait 15–30 seconds before retrying.</li>
+                      <li>Check your Google AI Studio quota and billing tier.</li>
+                    </ol>
+                  ) : result.category === "auth_invalid" ? (
+                    <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                      <li>Verify your API key in Google AI Studio.</li>
+                      <li>Update <code className="font-mono bg-destructive/10 px-1 rounded">GEMINI_API_KEY</code> in Supabase Secrets.</li>
+                    </ol>
+                  ) : result.category === "timeout" ? (
+                    <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                      <li>Google Gemini response exceeded the timeout threshold.</li>
+                      <li>You can retry now or set <code className="font-mono bg-destructive/10 px-1 rounded">GEMINI_FALLBACK_MODEL</code> in Supabase secrets.</li>
+                    </ol>
+                  ) : result.category === "upstream_unavailable" ? (
+                    <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                      <li>Google AI servers are temporarily experiencing high traffic.</li>
+                      <li>Wait a moment and click &ldquo;Run Diagnostic Test&rdquo; again.</li>
+                    </ol>
+                  ) : (
+                    <p className="leading-relaxed pl-1">
+                      {result.resolution || "Inspect Supabase Edge Function logs for diagnostic details."}
+                    </p>
+                  )}
+                  {result.details && (
+                    <div className="mt-2 pt-1.5 border-t border-destructive/15">
+                      <p className="text-3xs font-mono text-destructive/80 break-all bg-destructive/5 p-1.5 rounded">
+                        {result.details.length > 220 ? `${result.details.slice(0, 220)}...` : result.details}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

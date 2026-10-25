@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { ChatSession, ChatMessage, ChatRole, RiskLevel, ChatConsultResponse, HealthAssessmentSummary } from "@/types/chat";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "@/lib/emergencyDetector";
 import { hasConsent } from "./privacyService";
+import { parseEdgeFunctionError, getCategoryDetails, AiErrorCategory } from "./aiErrorHelper";
 
 const DEMO_SESSIONS_KEY = "healthai_demo_chat_sessions";
 const DEMO_MESSAGES_KEY = "healthai_demo_chat_messages";
@@ -327,6 +328,24 @@ export function isGreetingOrCourtesy(text: string): boolean {
   return GREETING_OR_COURTESY_PATTERNS.some((pattern) => pattern.test(clean));
 }
 
+const SUGGESTION_CHIP_PATTERNS = [
+  /^(?:check\s+a\s+symptom|advice\s+on\s+sleep|help\s+with\s+stress|a\s+bit\s+of\s+both)$/i,
+  /^(?:frequent\s+headaches|sleep\s+issues|digestive\s+problems|fatigue|stress\s+and\s+anxiety)$/i,
+  /^(?:i\s+want\s+advice\s+on\s+sleep\s+or\s+stress|general\s+wellness\s+inquiry)$/i,
+  /^(?:who\s+are\s+you|what\s+is\s+my\s+name|what\s+is\s+your\s+name|what\s+can\s+you\s+do|tell\s+me\s+about\s+yourself(?:\s+and\s+your\s+features)?)$/i,
+];
+
+export function isSuggestionChipOrMetaQuery(text: string): boolean {
+  if (!text || typeof text !== "string") return true;
+  const clean = text.trim();
+  return SUGGESTION_CHIP_PATTERNS.some((pattern) => pattern.test(clean));
+}
+
+export function isNonSymptomMessage(text: string): boolean {
+  return isGreetingOrCourtesy(text) || isSuggestionChipOrMetaQuery(text);
+}
+
+
 export async function sendChatMessage(
   sessionId: string,
   userId: string,
@@ -419,9 +438,9 @@ export async function sendChatMessage(
       isDemo
     );
 
-    const isGreeting = isGreetingOrCourtesy(trimmed);
-    const demoSymptoms = isGreeting ? [] : [trimmed.slice(0, 30)];
-    const suggestedTitle = isGreeting
+    const isNonSymptom = isNonSymptomMessage(trimmed);
+    const demoSymptoms = isNonSymptom ? [] : [trimmed.slice(0, 30)];
+    const suggestedTitle = isNonSymptom
       ? "General Wellness Consultation"
       : `${trimmed.slice(0, 24).replace(/[^\w\s]/g, "").trim()} Consultation`;
 
@@ -429,22 +448,22 @@ export async function sendChatMessage(
       ? "[Demo AI - Personalized with your health profile] "
       : "[Demo AI] ";
 
-    const replyText = isGreeting
-      ? `${replyPrefix}Hello! Welcome to Health Companion AI. How can I assist with your health and wellness goals today?`
+    const replyText = isNonSymptom
+      ? `${replyPrefix}Hello! Welcome to Afiyat AI. How can I assist with your health and wellness goals today?`
       : `${replyPrefix}Thank you for describing your symptoms. In this demo mode, I can provide general lifestyle wellness guidance: remember to maintain steady hydration, prioritize restful sleep, and avoid strenuous strain. How long have you been experiencing this?`;
 
     const mockResponse: ChatConsultResponse = {
       reply: replyText,
       suggested_title: suggestedTitle,
-      risk_level: isGreeting ? null : "Low",
+      risk_level: isNonSymptom ? null : "Low",
       emergency: false,
-      suggested_replies: isGreeting
+      suggested_replies: isNonSymptom
         ? ["I have a fever", "Frequent headaches", "Poor sleep quality", "Digestive discomfort"]
         : ["Started today", "A few days", "Mild intensity", "Associated with stress"],
       extracted: {
         symptoms: demoSymptoms,
-        duration: isGreeting ? "" : "recent",
-        intensity: isGreeting ? "" : "mild",
+        duration: isNonSymptom ? "" : "recent",
+        intensity: isNonSymptom ? "" : "mild",
         lifestyle: "hydration and rest recommended",
       },
       personalized: isPersonalized,
@@ -490,12 +509,13 @@ export async function sendChatMessage(
     });
 
     if (error) {
-      const serverMessage = data?.message || data?.details || error.message;
-      throw new Error(`AI is temporarily unavailable: ${serverMessage}`);
+      const parsed = await parseEdgeFunctionError(error, data);
+      throw new Error(`AI is temporarily unavailable: ${parsed.userMessage}`);
     }
 
     if (data?.error) {
-      throw new Error(`AI is temporarily unavailable: ${data.message || data.details || data.error}`);
+      const parsed = await parseEdgeFunctionError(null, data);
+      throw new Error(`AI is temporarily unavailable: ${parsed.userMessage}`);
     }
 
     if (!data || !data.reply) {
@@ -504,7 +524,10 @@ export async function sendChatMessage(
 
     return data as ChatConsultResponse;
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to communicate with AI consultation engine";
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Failed to communicate with AI consultation engine";
     throw new Error(message);
   }
 }
@@ -515,6 +538,9 @@ export interface AiDiagnosticResult {
   model?: string;
   latencyMs?: number;
   message: string;
+  category?: AiErrorCategory;
+  resolution?: string;
+  details?: string;
 }
 
 /**
@@ -537,40 +563,110 @@ export async function checkAiHealth(isDemo = false): Promise<AiDiagnosticResult>
     });
 
     if (error) {
+      const parsed = await parseEdgeFunctionError(error, data);
       return {
         ok: false,
-        message: error.message || "Failed to reach chat-consult diagnostic endpoint.",
+        provider: "gemini",
+        model: parsed.model || "gemini-3.5-flash",
+        latencyMs: parsed.latencyMs || 0,
+        category: parsed.category,
+        message: parsed.userMessage,
+        resolution: parsed.resolution,
+        details: parsed.details,
       };
     }
 
-    return data as AiDiagnosticResult;
+    if (data?.ok === false) {
+      const category = data.category || "internal";
+      const catDetails = getCategoryDetails(category, data.model);
+      return {
+        ok: false,
+        provider: data.provider || "gemini",
+        model: data.model || "gemini-3.5-flash",
+        latencyMs: data.latencyMs || 0,
+        category,
+        message: data.message || catDetails.userMessage,
+        resolution: data.resolution || catDetails.resolution,
+        details: data.details,
+      };
+    }
+
+    return {
+      ok: true,
+      provider: data?.provider || "gemini",
+      model: data?.model || "gemini-3.5-flash",
+      latencyMs: data?.latencyMs || 0,
+      message: data?.message || "AI connection verified successfully.",
+    };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const parsed = await parseEdgeFunctionError(err);
     return {
       ok: false,
-      message: `Diagnostic check failed: ${msg}`,
+      provider: "gemini",
+      model: parsed.model || "gemini-1.5-flash",
+      latencyMs: parsed.latencyMs || 0,
+      category: parsed.category,
+      message: parsed.userMessage,
+      resolution: parsed.resolution,
     };
   }
 }
 
-
 /**
  * Synthesizes a structured Health Assessment Summary from a consultation session.
- * Extracts symptoms, duration, intensity, lifestyle factors, risk level, lifestyle advice,
- * questions for a doctor, and required medical disclaimers.
+ * In production, requests AI synthesis from Supabase Edge Function 'chat-consult' (action: summarize).
+ * Never classifies chips or greetings as symptoms, and handles insufficient symptom input cleanly.
  */
 export async function generateHealthSummary(
   sessionId: string,
   userId: string,
   isDemo = false
 ): Promise<HealthAssessmentSummary> {
-  const messages = await loadChatMessages(sessionId, isDemo);
-  const session = await getChatSession(sessionId, userId, isDemo);
+  // Production LLM Synthesis Path
+  if (!isDemo && isSupabaseConfigured) {
+    const { data, error } = await supabase.functions.invoke("chat-consult", {
+      body: {
+        action: "summarize",
+        session_id: sessionId,
+      },
+    });
+
+    if (error) {
+      const parsed = await parseEdgeFunctionError(error, data);
+      throw new Error(`Health summary generation failed: ${parsed.userMessage}`);
+    }
+
+    if (data?.error) {
+      const parsed = await parseEdgeFunctionError(null, data);
+      throw new Error(`Health summary generation failed: ${parsed.userMessage}`);
+    }
+
+    if (!data) {
+      throw new Error("Empty response received from health summary generator.");
+    }
+
+    const summaryData = data as HealthAssessmentSummary;
+    const hasSufficient =
+      summaryData.has_sufficient_info ?? (summaryData.symptoms && summaryData.symptoms.length > 0);
+
+    return {
+      ...summaryData,
+      has_sufficient_info: hasSufficient,
+      risk_level: hasSufficient ? summaryData.risk_level : null,
+      disclaimer:
+        summaryData.disclaimer ||
+        "This is not a medical diagnosis. It is general wellness guidance. Please consult a qualified healthcare professional.",
+    };
+  }
+
+  // Demo / Offline Simulation Path
+  const messages = await loadChatMessages(sessionId, true);
+  const session = await getChatSession(sessionId, userId, true);
 
   const userMessages = messages.filter((m) => m.role === "user");
   const assistantMessages = messages.filter((m) => m.role === "assistant");
 
-  // Collect all extracted symptoms across messages
+  // Collect genuine symptoms extracted by assistant, ignoring chips & greetings
   const symptomsSet = new Set<string>();
   let duration = "";
   let intensity = "";
@@ -579,7 +675,7 @@ export async function generateHealthSummary(
   for (const msg of [...assistantMessages].reverse()) {
     if (msg.metadata?.extracted?.symptoms) {
       msg.metadata.extracted.symptoms.forEach((s) => {
-        if (s && s.trim() && !isGreetingOrCourtesy(s)) {
+        if (s && s.trim() && !isNonSymptomMessage(s)) {
           symptomsSet.add(s.trim());
         }
       });
@@ -595,22 +691,39 @@ export async function generateHealthSummary(
     }
   }
 
-  // Fallback if none extracted directly: check for substantive user message, never a greeting
+  // Check for substantive user message that isn't a chip, greeting, or meta inquiry
+  const substantiveUserMsgs = userMessages.filter(
+    (m) => m.content && m.content.trim().length > 3 && !isNonSymptomMessage(m.content)
+  );
+
+  if (symptomsSet.size === 0 && substantiveUserMsgs.length > 0) {
+    symptomsSet.add(substantiveUserMsgs[0].content.slice(0, 50));
+  }
+
+  // If still no real symptoms discussed, return insufficient information state
   if (symptomsSet.size === 0) {
-    const substantiveUserMsg = userMessages.find(
-      (m) => m.content && m.content.trim().length > 3 && !isGreetingOrCourtesy(m.content)
-    );
-    if (substantiveUserMsg) {
-      symptomsSet.add(substantiveUserMsg.content.slice(0, 50));
-    } else {
-      symptomsSet.add("General wellness inquiry");
-    }
+    return {
+      has_sufficient_info: false,
+      symptoms: [],
+      duration: "",
+      intensity: "",
+      lifestyle_factors: [],
+      risk_level: null,
+      summary:
+        "No specific symptoms were reported during this consultation. Tell the AI more about your symptoms to generate a summary.",
+      recommendations: [
+        "Describe specific physical symptoms you are experiencing, such as headache, fever, or joint pain.",
+        "Mention how long you have felt them and their intensity (mild, moderate, or severe).",
+      ],
+      doctor_questions: [],
+      disclaimer:
+        "This is not a medical diagnosis. It is general wellness guidance. Please consult a qualified healthcare professional.",
+    };
   }
 
   const symptomsList = Array.from(symptomsSet);
-  const risk_level: RiskLevel = session?.risk_level || "Low";
+  const risk_level: RiskLevel | null = session?.risk_level || "Low";
 
-  // Construct recommendations based on risk and lifestyle
   const recommendations: string[] = [
     "Maintain consistent hydration with at least 2 liters of water daily.",
     "Prioritize 7-9 hours of restful, uninterrupted sleep nightly.",
@@ -618,15 +731,16 @@ export async function generateHealthSummary(
   ];
 
   if (risk_level === "High" || risk_level === "Medium") {
-    recommendations.unshift("Schedule a comprehensive medical evaluation with your primary care physician.");
+    recommendations.unshift(
+      "Schedule a comprehensive medical evaluation with your primary care physician."
+    );
   }
 
-  // Construct doctor discussion points
   const doctor_questions: string[] = [
-    `How long do these symptoms typically take to resolve on their own?`,
-    `Are there any specific diagnostic tests or lab screenings you recommend for my situation?`,
-    `What specific warning signs should prompt me to seek urgent emergency care?`,
-    `Could my current sleep patterns or stress levels be contributing to this?`,
+    "How long do these symptoms typically take to resolve on their own?",
+    "Are there any specific diagnostic tests or lab screenings you recommend for my situation?",
+    "What specific warning signs should prompt me to seek urgent emergency care?",
+    "Could my current sleep patterns or stress levels be contributing to this?",
   ];
 
   const summary = `Based on your consultation, you reported experiencing ${symptomsList.join(", ")}${
@@ -634,6 +748,7 @@ export async function generateHealthSummary(
   }${intensity ? ` with ${intensity} intensity` : ""}. Your overall wellness risk indicator is categorized as ${risk_level}.`;
 
   return {
+    has_sufficient_info: true,
     symptoms: symptomsList,
     duration: duration || "Recent onset",
     intensity: intensity || "Mild to moderate",
@@ -642,8 +757,10 @@ export async function generateHealthSummary(
     summary,
     recommendations,
     doctor_questions,
-    disclaimer: "This is not a medical diagnosis. It is general wellness guidance. Please consult a qualified healthcare professional.",
+    disclaimer:
+      "This is not a medical diagnosis. It is general wellness guidance. Please consult a qualified healthcare professional.",
   };
 }
+
 
 

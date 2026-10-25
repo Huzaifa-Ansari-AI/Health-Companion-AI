@@ -4,7 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import { invokeHealthAnalysis } from "../_shared/aiAdapter.ts";
+import { invokeHealthAnalysis, AiServiceError } from "../_shared/aiAdapter.ts";
 import { detectEmergency, EMERGENCY_DISCLAIMER_MESSAGE } from "../_shared/emergencyDetector.ts";
 
 const corsHeaders = {
@@ -67,10 +67,29 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {
+    if (err instanceof AiServiceError) {
+      return new Response(
+        JSON.stringify({
+          error: err.category,
+          category: err.category,
+          message: err.userMessage,
+          details: err.message,
+          retry_after: err.retryAfter,
+          model: err.model,
+          latencyMs: err.latencyMs,
+        }),
+        {
+          status: err.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const message = err instanceof Error ? err.message : String(err);
     return new Response(
       JSON.stringify({
-        error: "AI_UNAVAILABLE",
+        error: "internal",
+        category: "internal",
         message: "The AI assessment analysis engine is temporarily unavailable.",
         details: message,
       }),

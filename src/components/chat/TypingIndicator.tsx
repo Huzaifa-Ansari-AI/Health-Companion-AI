@@ -5,7 +5,7 @@ export const TypingIndicator: React.FC = () => {
   return (
     <div
       role="status"
-      aria-label="Health Companion AI is thinking"
+      aria-label="Afiyat AI is thinking"
       className="flex items-center gap-3 p-3 max-w-[280px] rounded-2xl bg-card border border-border/70 shadow-xs text-muted-foreground animate-in fade-in duration-200"
     >
       <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

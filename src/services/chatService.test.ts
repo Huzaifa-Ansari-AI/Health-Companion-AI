@@ -206,7 +206,7 @@ describe("chatService - sendChatMessage Flow", () => {
   it("throws an explicit error when production chat-consult fails without falling back to fake text", async () => {
     const invokeSpy = vi.spyOn(supabase.functions, "invoke").mockResolvedValue({
       data: { error: "AI_UNAVAILABLE", message: "GEMINI_API_KEY secret is not set in Supabase." },
-      error: new Error("503 Service Unavailable"),
+      error: new Error("503 Service Unavailable") as unknown as null,
     });
 
     await expect(
@@ -315,7 +315,8 @@ describe("chatService - generateHealthSummary", () => {
     const summary = await generateHealthSummary(session.id, "demo-user-id", true);
     expect(summary.symptoms).not.toContain("assalamualaikum");
     expect(summary.symptoms).not.toContain("my name is Huzaifa");
-    expect(summary.symptoms).toContain("General wellness inquiry");
+    expect(summary.has_sufficient_info).toBe(false);
+    expect(summary.risk_level).toBeNull();
   });
 
   it("handles last stage of cancer empathetically with null risk level (no Low Risk badge)", async () => {

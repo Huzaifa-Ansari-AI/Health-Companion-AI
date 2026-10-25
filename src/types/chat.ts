@@ -56,10 +56,13 @@ export interface HealthAssessmentSummary {
   symptoms: string[];
   duration?: string;
   intensity?: string;
+  likely_conditions?: string[];
   lifestyle_factors?: string[];
-  risk_level: RiskLevel;
+  risk_level: RiskLevel | null;
   summary: string;
   recommendations: string[];
   doctor_questions: string[];
+  red_flags?: string[];
   disclaimer: string;
+  has_sufficient_info?: boolean;
 }
