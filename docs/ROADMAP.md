@@ -128,18 +128,28 @@ flowchart LR
   - "Edited by you" badge on reports and PDF exports.
   - Full propagation of customized edits to vector PDF downloads (`pdfService.ts`) and expiring doctor share links (`shareService.ts`).
   - Single-click "Reset to AI Original" option.
+- [x] **4.5.6 Health Assessment Improvements, Offline Mode & Report Management:**
+  - **Honest Offline Mode Labeling:** Renamed Demo Mode switch to "Offline Mode" (*Deterministic • Rule-Based*), hiding custom free-text inputs in favor of structured indicators and adding prominent non-AI banners to review and report views.
+  - **Enhanced BMI Categorization:** Integrated `Severe Thinness (<16.0)` with red visual treatment matching Obesity, across a 5-column spectrum with numerical ranges stacked underneath category labels.
+  - **Weight Input Backspace Bug Fix:** Replaced string-to-number coercions with a controlled string state allowing complete field clearing without getting stuck on digit `1`.
+  - **Multi-Entry Custom Tag Inputs:** Replaced single-line inputs with dynamic tag systems supporting Enter key, `+` button, duplicate prevention, and individual chip removals for symptoms, habits, and family conditions.
+  - **Database Persistence Disentanglement:** Ensured authenticated users saving offline assessments persist directly to Supabase `public.health_assessments` with `assessment_mode = "offline"`.
+  - **Dashboard Report Deletion:** Added accessible `AlertDialog` confirmation modal and `deleteAssessment` service with automatic cascade cleanup of expired/active shared report links.
+
 
 ---
 
 ## Milestone 5: Production CI/CD, Deployment & Startup Launch
 > **Goal:** Deploy to global edge CDN with automated testing, error tracking, and custom domain setup.
 
-- [ ] **5.1 Automated CI/CD Pipeline:**
-  - GitHub Actions workflow running lint, typecheck, and unit tests on every pull request and push to `main`.
-- [ ] **5.2 Edge Production Hosting:**
-  - Deployment on Vercel or Cloudflare Pages with custom domain configuration.
+- [x] **5.1 Automated CI/CD Pipeline (Workflow Implemented & Locally Verified):**
+  - GitHub Actions workflow (`.github/workflows/ci.yml`) running lint, typecheck, unit tests, and production build on every pull request and push to `main`.
+  - Added `"typecheck": "tsc -p tsconfig.app.json --noEmit"` to `package.json` scripts; local verification matrix clean.
+- [x] **5.2 Edge Production Hosting (Vercel Configuration & SPA Routing Ready):**
+  - Configured `vercel.json` with SPA routing rewrites (`/(.*) -> /index.html`) and static asset cache headers.
+  - Documented environment variable matrix (`.env.example`) and created comprehensive [DEPLOYMENT_GUIDE.md](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/docs/DEPLOYMENT_GUIDE.md) covering Supabase Auth redirect URLs and domain linking.
 - [ ] **5.3 Monitoring & Observability:**
-  - Sentry error monitoring integration.
-  - Web Vitals performance tracking.
+  - [x] Sentry error monitoring integration with strict PHI sanitization & session replay disabled.
+  - [ ] Web Vitals performance tracking.
 - [ ] **5.4 Launch Readiness & Marketing Landing:**
   - SEO optimization (dynamic OpenGraph cards, schema.org medical structured data, sitemap.xml).

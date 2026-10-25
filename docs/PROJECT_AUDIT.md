@@ -1,6 +1,9 @@
-# Project Audit & Discovery Report
+# Project Audit & Discovery Report (Historical Baseline)
 
-**Project Name:** AI Health Assistant (formerly InnerGlow Insights)  
+> [!NOTE]
+> **Historical Archive Notice:** This document represents the initial foundation discovery and decoupling audit conducted on **September 29, 2026** prior to Milestone 0. For current architecture, test coverage, and milestone progression (M0 through M4.5 completed), see [`docs/ROADMAP.md`](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/docs/ROADMAP.md) and [`docs/ARCHITECTURE.md`](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/docs/ARCHITECTURE.md).
+
+**Project Name:** Health Companion AI (Historical Discovery)  
 **Date of Audit:** September 29, 2026  
 **Auditor:** Senior Full-Stack & DevOps Engineer (Antigravity IDE)  
 

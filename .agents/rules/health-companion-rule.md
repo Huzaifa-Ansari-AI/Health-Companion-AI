@@ -9,18 +9,22 @@ trigger: always_on
 ---
 
 ## 1. Project Identity
-- **Name:** Health Companion AI (formerly InnerGlow Insights): AI health and wellness web app, built as a scalable startup product.
+- **Name:** Health Companion AI: AI health and wellness web app, built as a scalable startup product.
 - **Mission:** BMI evaluation, categorical risk assessment (`Low` / `Medium` / `High`), non-prescriptive lifestyle guidance, history tracking, exportable reports.
 - **Promise:** Safe, honest, non-diagnostic. **"This is not a medical diagnosis."**
 - **Repo:** github.com/Huzaifa-Ansari-AI/Health-Companion-AI (branch `main`).
 - **Owner:** Huzaifa, CS student learning Agentic AI. Keep code readable and explain simply.
 
-## 2. Current State
-- ✅ M0 Foundation Hardening: DONE (commit `54e9844`)
-- ⏳ M1 AI Symptom Chatbot + Report Generation: NEXT
-- 📋 M2 Reports and PDF Export → M3 Vitals Analytics → M4 Profile and Privacy → M5 CI/CD and Launch
-- Never break existing features: auth, demo mode, protected routes, assessment, dashboard, print report, ErrorBoundary.
-- Baseline: 7 tests pass, 0 lint errors, `tsc --noEmit` clean, build passes, no secrets in repo.
+## 2. Current State & Milestones
+- ✅ M0 Foundation Hardening (Verified)
+- ✅ M1 AI Symptom Consultation Chatbot (Verified)
+- ✅ M2 Dynamic Health Reports & PDF Export (Verified)
+- ✅ M3 Vitals Analytics & Longitudinal Tracking (Verified)
+- ✅ M4 Patient Profile, Personalization & Privacy Readiness (Verified)
+- ✅ M4.5 AI Quality & Product Hardening (Gemini LLM, 3-Step Assessment Redesign & Editable Reports - Verified)
+- ⏳ M5 Production CI/CD, Deployment & Startup Launch (NEXT)
+- Never break existing features: auth, demo mode, protected routes, assessment, dashboard, print report, ErrorBoundary, chat, trends, profile, reports.
+- Baseline: 203 tests pass, 0 lint errors, `tsc --noEmit` clean, build passes, no secrets in repo.
 - Follow milestone order in `docs/ROADMAP.md`. Never start a later milestone before the current one is verified.
 
 ## 3. Stack (no changes without approval)
@@ -70,7 +74,7 @@ This is a wellness tool, NOT a medical device or doctor.
 
 ## 7. Architecture
 ```
-src/components/{auth,common,landing,chat,dashboard,ui}
+src/components/{auth,chat,common,dashboard,landing,profile,report,tracking,trends,ui}
 src/{context,hooks,lib,pages,services,types}
 supabase/{functions,migrations}   docs/
 ```
@@ -125,7 +129,7 @@ npm run build       # build succeeds
 - Every new service or utility gets unit tests (normal, edge, error). Key user flows get component tests.
 - Mandatory tests: BMI, risk logic, emergency detection, disclaimer presence, auth guards, AI schema validation.
 - Mock Supabase and AI. Tests never call real external services.
-- Never delete or weaken a test to make it pass. Test count never drops below the baseline (7).
+- Never delete or weaken a test to make it pass. Test count never drops below the baseline (203).
 
 ## 13. Git and Docs
 - Use feature branches for big work (`feat/m1-chat-ui`). Merge to `main` only when gates pass.
@@ -134,18 +138,14 @@ npm run build       # build succeeds
 - No destructive actions (drop DB, mass delete, `git reset --hard`) without approval.
 - Keep docs in sync with code: `ROADMAP` (tick items), `ARCHITECTURE`, `ROUTES`, `SUPABASE`, `SECURITY`, `DEPLOYMENT`, `README`. Outdated docs are a bug.
 
-## 14. Milestone 1 Build Order
-1. **Data layer:** migration for chat sessions and messages with RLS, types, `chatService`.
-2. **Edge Function `chat-consult`:** JWT check, validation, system prompt, emergency layer, AI call, safe errors.
-3. **Chat UI:** page or drawer, messages, typing indicator, quick chips, loading/error states, saved history.
-4. **Safety:** emergency detection (rules + AI), disclaimers, `Low/Medium/High` risk.
-5. **Report:** AI extracts symptoms, duration, intensity, lifestyle into a validated "Health Assessment Summary".
-6. **Sync:** save the summary to `health_assessments` so it shows on the dashboard.
-7. **Tests and docs**, then milestone review.
+## 14. Milestone 5 Build Order (Current Target)
+1. **Automated CI/CD Pipeline:** GitHub Actions workflow running lint, typecheck, and unit tests (203+ tests) on pull requests and push to `main`.
+2. **Edge Production Hosting:** Deployment configuration on Vercel or Cloudflare Pages with custom domain setup and SPA route rewrites.
+3. **Monitoring & Observability:** Integration of Sentry for error tracking and Web Vitals performance telemetry.
+4. **Launch Readiness & SEO:** Dynamic OpenGraph metadata, schema.org medical structured data, robots.txt, and sitemap.xml.
+5. **Verification & Launch Audit:** End-to-end user journey validation, all quality gates passing cleanly, zero secrets exposed.
 
-**M1 Done =** all ROADMAP M1 items complete, emergency flow tested, gates pass, docs updated, no secrets exposed, works on mobile and desktop, demo mode safe (limits or mock replies, never real keys).
-
-For M2 to M5: give a short implementation plan for approval first, then apply the same rules.
+**M5 Done =** Automated pipeline verified, production site deployed on custom domain with zero errors, SEO and monitoring active, all documentation current.
 
 ## 15. Workflow for Every Task
 1. **Understand:** restate the goal in 2-3 lines, list assumptions, ask if unclear.

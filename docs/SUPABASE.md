@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **AI Health Assistant** backend is powered by **Supabase**, providing authentication, a PostgreSQL database, strict Row Level Security (RLS) policies, and serverless Edge Functions for secure AI processing.
+The **Health Companion AI** backend is powered by **Supabase**, providing authentication, a PostgreSQL database, strict Row Level Security (RLS) policies, and serverless Edge Functions for secure AI processing.
 
 ```
 React (Vite Frontend)
@@ -27,7 +27,7 @@ React (Vite Frontend)
 
 ## 2. PostgreSQL Schema & Tables
 
-Migration file: [`supabase/migrations/20260929_init_schema.sql`](file:///d:/01_Career/01_Agentic%20AI/innerglow-insights/supabase/migrations/20260929_init_schema.sql)
+Migration files: Located in [`supabase/migrations/`](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/supabase/migrations) (e.g. `20260929_init_schema.sql`, `20261005120000_m4_health_profile_privacy.sql`).
 
 ### `public.profiles`
 Stores user profile information, automatically created when a user signs up.
@@ -292,8 +292,14 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 4. **Execute Database Migration:**
    - Open the **SQL Editor** in the Supabase Dashboard.
-   - Copy and paste the contents of [`supabase/migrations/20260929_init_schema.sql`](file:///d:/01_Career/01_Agentic%20AI/innerglow-insights/supabase/migrations/20260929_init_schema.sql).
-   - Click **Run** to provision `profiles`, `health_assessments`, RLS policies, and the `on_auth_user_created` trigger.
+   - Run the migration scripts in sequence from [`supabase/migrations/`](file:///d:/01_Career/01_Agentic%20AI/Health%20Companion%20AI/supabase/migrations):
+     - `20260929_init_schema.sql` (Base profiles & assessments)
+     - `20260929120000_chat_schema.sql` (Chat sessions & messages)
+     - `20261004120000_m2_reports_schema.sql` (Report customizations)
+     - `20261004130000_m2_report_shares.sql` (Expiring report shares)
+     - `20261004140000_m3_tracking_schema.sql` (Daily check-ins & habits)
+     - `20261005120000_m4_health_profile_privacy.sql` (Health profile, history & privacy consents)
+   - Verify that all tables, RLS policies, and triggers are cleanly created.
 
 5. **Configure Authentication Settings:**
    - Go to **Authentication > Providers > Email**:

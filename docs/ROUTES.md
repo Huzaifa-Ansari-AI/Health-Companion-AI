@@ -10,5 +10,6 @@
 | `/checkin` | `Checkin.tsx` | Protected (`ProtectedRoute`) | Quick 30-second daily wellness & habit log (mood, sleep, hydration, activity, notes) with safety filter |
 | `/trends` | `Trends.tsx` (Lazy) | Protected (`ProtectedRoute`) | Interactive longitudinal analytics and charts (BMI, sleep/fatigue, hydration, activity, mood/energy) |
 | `/reports/:assessmentId` | `Report.tsx` | Protected (`ProtectedRoute`) | Structured 8-section wellness summary report, on-screen view, A4 print, PDF export, and share controls |
+| `/profile` | `Profile.tsx` | Protected (`ProtectedRoute`) | Comprehensive patient health profile, medical history, and Privacy Center (data export & cascade deletion) |
 | `/shared/:token` | `SharedReport.tsx` | Public (Token Verified) | Read-only doctor view of shared wellness report, expiring access, noindex/nofollow privacy header |
 | `*` | `NotFound.tsx` | Public | 404 Not Found error page |

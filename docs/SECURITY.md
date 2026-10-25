@@ -60,3 +60,33 @@ Daily wellness tracking requires clear privacy boundaries between objective biom
 4. **Optional Report Inclusion:** Longitudinal vitals trends in generated reports are strictly OFF by default and require deliberate user opt-in via toolbar toggle.
 5. **Owner-Only RLS Policies:** `daily_checkins`, `body_measurements`, and `user_achievements` strictly enforce `auth.uid() = user_id` on all CRUD operations. No public database policies exist.
 
+---
+
+## 7. User Health Profile, Privacy Center & GDPR/HIPAA-Ready Architecture (Milestone 4)
+
+Patient health records require rigorous privacy safeguards, explicit consent management, and granular user autonomy:
+
+1. **Strict Opt-in Defaults (Default OFF):** All 5 privacy consent toggles (`store_health_profile`, `ai_personalization`, `analytics_participation`, `doctor_share_retention`, `email_digest`) default to `false` until the user deliberately grants permission.
+2. **Append-Only Consent Audit Trail:** Every consent state transition is recorded in the immutable `privacy_consents` audit table with timestamp, client metadata, and user ID. Previous records are never overwritten.
+3. **AI Context Minimization (`aiProfileContext.ts`):** When `ai_personalization` is enabled, data passed to the AI is strictly minimized:
+   - Full names, emails, and identifiers are completely stripped.
+   - Exact ages are converted to age brackets (e.g., "25-34 years").
+   - Freeform reflections and daily mood logs are excluded.
+   - Profile context is injected with mandatory non-diagnostic system constraints.
+4. **Machine-Readable Data Portability (`exportUserData`):** Users can export their complete health record at any time into a formatted, machine-readable JSON archive containing demographics, assessments, chat summaries, check-ins, allergies, conditions, medications, and consent history.
+5. **Irreversible Two-Step Cascade Deletion (`deleteUserDataCascade`):** Users retain the absolute right to be forgotten. Account deletion requires explicit two-step confirmation (typing `"DELETE"`), immediately executing an atomic database cascade that purges all records across 16 tables and terminates the Supabase auth account.
+6. **Zero Third-Party Ad Trackers or Telemetry:** Health data is never sold, shared, or passed to external advertising networks or unverified tracking scripts.
+
+---
+
+## 8. Gemini LLM Integration & Medical Guardrails Hardening (Milestone 4.5)
+
+To ensure clinical safety, reliability, and security across the conversational and assessment pipelines:
+
+1. **Zero Client-Side LLM Access:** The frontend browser application never calls Gemini or any AI provider directly. All AI requests flow exclusively through authenticated Supabase Edge Functions (`chat-consult`, `analyze-health`).
+2. **Environment Secret Isolation:** `GEMINI_API_KEY` and model configuration reside strictly inside Supabase Edge Function secrets and are never exposed in client bundles or network requests.
+3. **Structured Zod Schema Validation & Safe Fallback:** All Edge Functions enforce strict JSON schema parsing using Zod. In the event of malformed LLM responses or timeouts, the functions fall back gracefully to deterministic, non-diagnostic baseline structures rather than failing or returning unvalidated text.
+4. **Dual-Layer Emergency Interceptor (Rules + AI):** High-sensitivity regex rules and keyword interceptors run before and alongside LLM inference. Detection of acute emergencies (chest pain, stroke signs, anaphylaxis, severe respiratory distress, suicidal ideation) or oncology alarms immediately overrides normal flow and displays emergency medical hotline guidance.
+5. **Multilingual Safety Equivalence:** AI prompts and safety boundary rules operate identically across both English and Roman Urdu, preventing safety guardrail bypass via language-switching prompt injection attacks.
+
+

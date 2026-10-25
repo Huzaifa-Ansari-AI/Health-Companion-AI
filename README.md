@@ -1,12 +1,16 @@
-# AI Health Assistant — Personalized Health Insights
+# Health Companion AI — Personalized Health & Wellness Insights
 
-An independent, production-ready AI Health Assistant web application that helps users monitor wellness metrics, calculate BMI, evaluate potential health risk patterns, and receive personalized lifestyle recommendations.
+An independent, production-grade AI Health Companion web application that helps users monitor wellness metrics, calculate BMI, evaluate potential health risk patterns, and receive personalized lifestyle recommendations.
 
 ---
 
 ## Key Features
 
-- **Interactive AI Symptom Consultation:** Conversational AI engine exploring symptoms with emergency red-flag interceptors and structured consultation synthesis.
+- **Doctor-Ready Editable Reports (Milestone 4.5):** Patient refinement of symptoms timeline, chief complaint, vitals, and doctor discussion points with "Edited by you" badge, single-click reset to AI original, and synced vector PDF downloads.
+- **Gemini AI Integration (English & Roman Urdu):** Multi-turn conversational AI engine powered by Google Gemini via serverless Edge Functions, with bilingual Roman Urdu/English support and automatic language alignment.
+- **Regional Substance & Lifestyle Assessment:** 3-step dynamic biometric and lifestyle evaluation covering height (ft/in + cm), weight (kg/lbs), 12 symptoms, and regional oral substances (Gutka, Chhalia, Paan, Naswar, VELO/ZYN, energy drinks).
+- **Dynamic Risk Indicators Grid:** Real-time categorical risk indicators displaying only actionable Medium/High risks tied directly to user inputs (or 1 positive Low Risk card if clear).
+- **Interactive AI Symptom Consultation:** Conversational AI exploring symptoms with emergency red-flag interceptors and structured consultation synthesis.
 - **Dynamic Health & Wellness Reports:** 8-section standardized wellness summary with patient vitals, symptoms timeline, lifestyle scoring (0-100), categorical risk assessment (`Low` / `Medium` / `High`), optional 7-day vitals trends, and doctor discussion points.
 - **Client-Side Vector PDF Export:** High-fidelity, multi-page vector PDF generation (`pdf-lib`) with selectable text, A4 layout, dynamic pagination, and embedded QR code verification (`qrcode`).
 - **Secure Expiring Share Links:** Share immutable wellness snapshots with doctors via 32-byte cryptographic tokens, SHA-256 server-side hashing, privacy anonymization toggles, and zero public database policies.
@@ -90,13 +94,45 @@ npm run build
 The optimized production bundle will be output to the `dist/` directory.
 
 ### 6. AI Engine Configuration (Google Gemini)
-The consultation chatbot and dynamic health risk assessment run server-side via Supabase Edge Functions (`chat-consult` and `analyze-health`).
-Configure the following secrets in your Supabase project dashboard (**Project Settings** -> **Edge Functions** -> **Secrets**):
+The consultation chatbot, AI health summaries, dynamic risk assessments, and doctor questions run server-side via Supabase Edge Functions (`chat-consult`, `analyze-health`, and `generate-doctor-questions`).
+
+Configure the following secrets in your Supabase project dashboard (**Project Settings** -> **Edge Functions** -> **Manage Secrets**):
 ```env
 GEMINI_API_KEY=AIzaSy...              # Your Google AI Studio API Key (Required)
-GEMINI_MODEL=gemini-1.5-flash        # Model selection (Optional, defaults to gemini-1.5-flash)
+GEMINI_MODEL=gemini-1.5-flash        # Primary active model (e.g. gemini-1.5-flash)
+GEMINI_FALLBACK_MODEL=gemini-2.0-flash # Optional fallback model on rate-limits, timeouts, or 503s
 ```
 *Note: In Demo Mode, an offline simulated health analysis engine runs locally without requiring an API key or network connection.*
+
+### 7. Deploying Edge Functions
+Whenever Edge Function code is updated, redeploy each changed function using the Supabase CLI:
+```bash
+npx supabase functions deploy chat-consult --no-verify-jwt
+npx supabase functions deploy analyze-health --no-verify-jwt
+npx supabase functions deploy generate-doctor-questions --no-verify-jwt
+```
+*(JWT verification is enforced programmatically within the Deno handler via Supabase Auth).*
+
+### 8. Reading Edge Function Logs
+To inspect real-time server-side logs without exposing sensitive health information or secrets:
+1. Open your **Supabase Dashboard** -> **Edge Functions**.
+2. Click on the target function (e.g. `chat-consult`).
+3. Navigate to the **Logs** tab.
+4. Each entry includes safe telemetry: `[ai] [requestId] fn=callGemini model=gemini-1.5-flash status=200 latency=1240ms`.
+
+### 9. AI Troubleshooting Guide
+
+| Error Category | Likely Cause | Actionable Resolution |
+| :--- | :--- | :--- |
+| `key_missing` | Secret `GEMINI_API_KEY` is missing in Supabase Edge Functions. | Add `GEMINI_API_KEY` under Edge Functions > Manage Secrets. |
+| `auth_invalid` | `GEMINI_API_KEY` is mistyped, expired, or rejected by Google. | Check Google AI Studio and re-save the valid API key in Supabase secrets. |
+| `model_not_found` | Model name in `GEMINI_MODEL` has been retired or doesn't exist. | Update `GEMINI_MODEL` to an active model (e.g. `gemini-1.5-flash`). |
+| `rate_limited` | Google AI Studio RPM or token quota reached (429). | Wait 15–30 seconds. Edge Functions automatically retry twice with backoff & jitter. |
+| `timeout` | Upstream Gemini response exceeded server timeout (25s). | Configure `thinkingBudget: 0` (default) or set `GEMINI_FALLBACK_MODEL`. |
+| `upstream_unavailable` | Google Gemini API temporary 500/503 overload. | Wait a moment and click Retry. Automatic exponential backoff will attempt recovery. |
+| `bad_request` | Invalid generation parameters or empty request payload. | Verify message content and retry. |
+| `internal` | Unexpected schema validation failure or edge error. | Inspect the Supabase Edge Function logs for the specific request ID. |
+
 
 ---
 

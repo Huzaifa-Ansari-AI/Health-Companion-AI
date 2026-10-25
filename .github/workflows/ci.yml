@@ -1,0 +1,53 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Cancel in-progress runs on the same branch or PR to conserve GitHub Actions minutes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Enforce minimal read-only permissions
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    name: Lint, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (LTS v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies (reproducible from lockfile)
+        run: npm ci
+
+      - name: 1. ESLint Check
+        run: npm run lint
+
+      - name: 2. TypeScript Strict Typecheck
+        run: npm run typecheck
+
+      - name: 3. Vitest Automated Test Suite
+        run: npm run test
+
+      - name: 4. Vite Production Build
+        run: npm run build
+        env:
+          # Provide fallback placeholder credentials so CI build succeeds on PR runners without exposing secrets
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ci-dummy-project.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-dummy-anon-key' }}
