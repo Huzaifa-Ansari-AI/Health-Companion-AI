@@ -1,4 +1,4 @@
-# Health Companion AI — Personalized Health & Wellness Insights 
+# Health Companion AI — Personalized Health & Wellness Insights  
 
 An independent, production-grade AI Health Companion web application that helps users monitor wellness metrics, calculate BMI, evaluate potential health risk patterns, and receive personalized lifestyle recommendations.
 
