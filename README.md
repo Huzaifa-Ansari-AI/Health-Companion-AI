@@ -1,4 +1,5 @@
 # Health Companion AI — Personalized Health & Wellness Insights
+Live App:https://afiyat-ai.vercel.app/
 
 An independent, production-grade AI Health Companion web application that helps users monitor wellness metrics, calculate BMI, evaluate potential health risk patterns, and receive personalized lifestyle recommendations.
 
